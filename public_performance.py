@@ -41,10 +41,24 @@ def finish(stats):
     return stats
 
 
+def session_stats(rows, asset, as_of):
+    close = math.floor(as_of / 900) * 900
+    local = datetime.fromtimestamp(close, ZoneInfo(TIMEZONE))
+    month = ('JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC')[local.month-1]
+    ticker = f"KX{asset}15M-{local:%y}{month}{local:%d%H%M}-{local:%M}"
+    matches = rows.get(ticker, [])
+    pending = any(r.get('status') == 'OPEN' for r in matches)
+    values = [r.get('net_pnl') for r in matches if r.get('status') == 'CLOSED']
+    known = all(type(v) in (int,float) and math.isfinite(v) for v in values)
+    return dict(session_pnl=round(math.fsum(values),8) if known and not pending else None,
+                session_pending=pending, session_close=close)
+
+
 def build_performance(histories, assets, now):
     today = trade_day(now)
     daily = {}
     all_time = {}
+    sessions = {}
     excluded = 0
     timestamps = []
     missing = []
@@ -56,7 +70,12 @@ def build_performance(histories, assets, now):
             continue
         timestamps.append(data["updated_at"])
         stale = stale or bool(data.get("stale")) or not 0 <= now - data["updated_at"] <= 120
+        grouped = {}
+        for row in data['rows']:
+            grouped.setdefault(row.get('market'), []).append(row)
+        sessions[asset] = grouped
         total = empty_stats()
+        total.update(session_stats(grouped, asset, now))
         streak = longest_win = longest_loss = 0
         for row in sorted((r for r in data["rows"] if r.get("status") == "CLOSED"),
                           key=lambda r: (r.get("exit_timestamp") or r.get("timestamp") or 0, r.get("market", ""))):
@@ -92,8 +111,63 @@ def build_performance(histories, assets, now):
     while day <= end:
         key = day.isoformat()
         stats = daily.get(key, {})
-        days.append(dict(date=key, assets={asset: finish(stats.get(asset, empty_stats())) for asset in all_time}))
+        as_of = min(now, datetime.combine(day + timedelta(days=1), datetime.min.time(), ZoneInfo(TIMEZONE)).timestamp() - .001)
+        day_assets = {}
+        for asset in all_time:
+            value = finish(stats.get(asset, empty_stats()))
+            value.update(session_stats(sessions[asset], asset, as_of))
+            day_assets[asset] = value
+        days.append(dict(date=key, assets=day_assets))
         day += timedelta(days=1)
     return dict(timezone=TIMEZONE, today=today, updated_at=min(timestamps, default=now),
                 generated_at=now, stale=stale or bool(missing), missing_assets=missing,
                 excluded_undated_trades=excluded, all_time={a: finish(s) for a, s in all_time.items()}, days=days)
+
+
+def build_intraday(histories, assets, day, now):
+    """Cumulative realized P&L at actual close times, with DST-aware day bounds."""
+    zone = ZoneInfo(TIMEZONE)
+    start_date = datetime.fromisoformat(day).date()
+    start = datetime.combine(start_date, datetime.min.time(), zone).timestamp()
+    end = datetime.combine(start_date + timedelta(days=1), datetime.min.time(), zone).timestamp()
+    until = max(start, min(now, end))
+    series, missing, changes = {}, [], {}
+    stale = False
+    for asset in assets:
+        history = histories.get(asset)
+        if history is None:
+            missing.append(asset)
+            series[asset] = [dict(timestamp=start, pnl=None)]
+            continue
+        stale = stale or bool(history.get('stale'))
+        grouped = {}
+        for row in history['rows']:
+            closed = row.get('exit_timestamp')
+            if (row.get('status') != 'CLOSED' or type(closed) not in (int, float)
+                    or not start <= closed < end or closed > until):
+                continue
+            pnl = row.get('net_pnl')
+            value = pnl if type(pnl) in (int, float) and math.isfinite(pnl) else None
+            previous = grouped.get(closed, 0)
+            grouped[closed] = previous + value if previous is not None and value is not None else None
+        cumulative = 0
+        points = [dict(timestamp=start, pnl=0)]
+        for timestamp, value in sorted(grouped.items()):
+            cumulative = cumulative + value if cumulative is not None and value is not None else None
+            points.append(dict(timestamp=timestamp, pnl=cumulative))
+            changes.setdefault(timestamp, {})[asset] = cumulative
+        points.append(dict(timestamp=until, pnl=cumulative))
+        series[asset] = points
+    current = {asset: None if asset in missing else 0 for asset in assets}
+
+    def total_value():
+        return math.fsum(current.values()) if all(v is not None for v in current.values()) else None
+
+    total = [dict(timestamp=start, pnl=total_value())]
+    for timestamp, values in sorted(changes.items()):
+        current.update(values)
+        total.append(dict(timestamp=timestamp, pnl=total_value()))
+    total.append(dict(timestamp=until, pnl=total_value()))
+    return dict(day=day, timezone=TIMEZONE, start=start, end=end, until=until,
+                generated_at=now, assets=series, total=total, missing_assets=missing,
+                stale=stale or bool(missing))

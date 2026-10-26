@@ -17,11 +17,11 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse
 
 if __package__:
-    from .public_performance import build_performance
+    from .public_performance import build_performance, build_intraday
 else:  # The isolated website is installed without the trading package.
-    from public_performance import build_performance
+    from public_performance import build_performance, build_intraday
 
-ASSETS = ("BTC", "ETH", "SOL", "XRP", "BNB", "HYPE", "DOGE", "GOLD", "SILVER", "WTI")
+ASSETS = ("BTC", "ETH", "SOL", "XRP", "BNB", "HYPE", "DOGE", "GOLD", "SILVER", "WTI", "PLATINUM", "PALLADIUM", "COPPER", "NATGAS")
 HISTORY_RATE = 5
 HISTORY_BURST = 10
 HISTORY_CONCURRENCY = 2
@@ -179,6 +179,54 @@ def create_app(data_dir=None):
             performance_task = asyncio.create_task(asyncio.to_thread(calculate_performance))
             performance_task.add_done_callback(lambda done: done.exception() if not done.cancelled() else None)
         return await asyncio.shield(performance_task)
+
+    intraday_cache = OrderedDict()
+
+    def calculate_intraday(day):
+        zone = ZoneInfo("America/New_York")
+        bounds = (datetime.combine(day, day_time.min, zone).timestamp(),
+                  datetime.combine(day + timedelta(days=1), day_time.min, zone).timestamp())
+
+        class Histories:
+            def get(self, asset):
+                try:
+                    return history_page(asset, 0, 50_000, bounds, "closed")
+                except HTTPException:
+                    return None
+
+        return build_intraday(Histories(), ASSETS, day.isoformat(), time.time())
+
+    @app.get("/api/intraday")
+    async def intraday(day: date):
+        nonlocal history_tokens, history_checked, history_active
+        if not 2000 <= day.year <= 2100:
+            raise HTTPException(422, "Date out of range")
+        now = monotonic()
+        cached = intraday_cache.get(day)
+        if cached and (not cached[1].done() or now - cached[0] < 2):
+            return await asyncio.shield(cached[1])
+        history_tokens = min(HISTORY_BURST, history_tokens + max(0, now - history_checked) * HISTORY_RATE)
+        history_checked = now
+        if history_tokens < 1 or history_active >= HISTORY_CONCURRENCY:
+            raise HTTPException(429, "History is busy; retry shortly", headers={"Retry-After": "1"})
+        if day not in intraday_cache and len(intraday_cache) >= 2:
+            completed = next((key for key, value in intraday_cache.items() if value[1].done()), None)
+            if completed is None:
+                raise HTTPException(429, "History is busy; retry shortly", headers={"Retry-After": "1"})
+            del intraday_cache[completed]
+        history_tokens -= 1
+        history_active += 1
+        task = asyncio.create_task(asyncio.to_thread(calculate_intraday, day))
+        intraday_cache[day] = (now, task)
+
+        def finished(done):
+            nonlocal history_active
+            history_active -= 1
+            if not done.cancelled():
+                done.exception()
+
+        task.add_done_callback(finished)
+        return await asyncio.shield(task)
 
     @app.get("/performance")
     def performance_page():

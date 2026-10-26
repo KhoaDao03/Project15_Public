@@ -92,7 +92,7 @@ For deployment:
 
 - Save the previous code/configuration revision and record how to restore it.
 - Validate configuration before reload/restart. Restart only the public website services that need it.
-- Check both pages and all three data endpoints with actual sanitized files; static HTTP 200 alone is insufficient.
+- Check both pages and all four data endpoints with actual sanitized files; static HTTP 200 alone is insufficient.
 - Confirm application/dependency installation works on this server; do not assume a virtual environment copied from another host is portable.
 - Verify mobile layout and horizontal table scrolling, daily market selection, calendar navigation, exports, and preservation of selection during refresh.
 - Check that counts, highlights, P&L, and streaks agree with source exports after a real or safely simulated data change. A browser mock test alone does not prove source-data correctness.

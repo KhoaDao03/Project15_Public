@@ -14,7 +14,7 @@ AI agents working on the Website VPS must read [AGENTS.md](AGENTS.md) first. It 
 - **Performance history (`/performance`)**: monthly and weekly P&L calendar, market filters, selected-day market records, and selectable market rows linked to daily trade records. Week/month CSV exports retain signed P&L values.
 - **Example calendar**: optional October 2025 sample data. Visitors can edit example daily records in browser memory; edits disappear on reload and never alter recorded trades.
 
-Both pages use the Project15 theme. Supported markets are BTC, ETH, SOL, XRP, BNB, HYPE, DOGE, GOLD, SILVER, and WTI (displayed as OIL / WTI).
+Both pages use the Project15 theme. Supported markets are BTC, ETH, SOL, XRP, BNB, HYPE, DOGE, GOLD, SILVER, WTI (displayed as OIL / WTI), PLATINUM, PALLADIUM, COPPER, and NATGAS (natural gas).
 
 ## Repository contents
 
@@ -143,8 +143,11 @@ Separating the VPSs reduces competition with the bot for CPU and memory. It does
 | `GET /api/view` | Latest published market snapshot |
 | `GET /api/performance` | Daily and all-time performance, freshness information, and missing-market indicators |
 | `GET /api/history/{asset}` | Paginated sanitized trade records |
+| `GET /api/intraday?day=YYYY-MM-DD` | Cumulative realized P&L at trade-close times for the selected New York day, per market and total |
 
 History query parameters: `offset` (default 0), `limit` (default 25, maximum 100), optional `day=YYYY-MM-DD`, and `basis=closed` or `basis=opened`. Supported years for day filtering are 2000–2100.
+
+The chart beneath the performance calendar shows each of the 14 markets and total realized P&L after fees, starting at zero each day. Hover, tap, or use arrow keys to inspect values; legend buttons toggle lines. The market filter also filters the total. Unknown P&L stays unavailable. Example records have no intraday chart because they contain daily totals only. Intraday responses are cached for two seconds and share the trade-history request limits.
 
 Requests using methods other than GET/HEAD are rejected. There are no public trading controls or write APIs. Example calendar edits and CSV downloads happen in the browser.
 
@@ -174,3 +177,11 @@ sudo journalctl -u caddy -n 100 --no-pager
 If updates stop, check the Bot VPS exporter, then file synchronization, destination permissions, and finally the public server. Do not commit exported histories or credentials to GitHub as a substitute for synchronization.
 
 This extracted repository currently has no bundled automated test suite. Original backend and browser tests remain in the Project15 repository; do not assume they automatically test future changes made only here.
+
+Commodity open-position highlights use 8% red when the model opposes the held side (cyan remains 6%). The bot-side public exporter retains `last_model_probability` on each still-open trade when evaluation moves to another contract. This is a last-known model reading, not a confirmed result; match it only to that trade. Existing snapshots without this field cannot recover earlier readings.
+
+The source dashboard allows reference prices up to five seconds old for display. Trading freshness limits remain separate and unchanged. This limit is implemented in the bot VPS source dashboard, not this standalone website.
+
+Both market-record tables include Latest session Δ P&L: realized net P&L for the latest completed 15-minute contract, matched by contract ticker rather than trade exit time. Skipped intervals show zero; open/unsettled trades show Pending. Performance History uses the latest interval ending on its selected New York date. The source server supplies session_pnl, session_pending, and session_close through /api/performance.
+
+The Market dashboard defaults to Today (America/New_York). Its All time / Today switch updates the summary, market records, rankings, and group totals; live open counts and current streaks remain independent of the selected period.

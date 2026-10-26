@@ -19,10 +19,14 @@ function replaceIfChanged(node,...children){
 const $=id=>document.getElementById(id);
 const el=(tag,value,cls)=>{const n=document.createElement(tag);if(value!==undefined)n.textContent=value;if(cls)n.className=cls;return n;};
 const numeric=v=>typeof v==='number'&&Number.isFinite(v);
-const symbols=['BTC','ETH','SOL','XRP','BNB','HYPE','DOGE','GOLD','SILVER','WTI'];
+const symbols=['BTC','ETH','SOL','XRP','BNB','HYPE','DOGE','GOLD','SILVER','WTI','PLATINUM','PALLADIUM','COPPER','NATGAS'];
 const cryptoSymbols=symbols.slice(0,7),commoditySymbols=symbols.slice(7);
 const assetName=a=>a==='WTI'?'OIL / WTI':a;
 const coinPaths={
+ PLATINUM:'M12 2 21 7v10l-9 5-9-5V7Z',
+ PALLADIUM:'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z',
+ COPPER:'M5 3h14l3 9-3 9H5l-3-9Z',
+ NATGAS:'M13 1c1 6-5 7-3 12 2-1 3-3 3-5 4 3 7 6 6 10a7 7 0 0 1-14-1C4 10 10 8 13 1Zm-1 12c0 3-3 4-3 6a3 3 0 0 0 6 0c0-2-2-3-3-6Z',
  DOGE:'M8 5h4a7 7 0 0 1 0 14H8V5Zm-3 7h9',
  BNB:'M12 2 6.5 7.5 8.6 9.6 12 6.2 15.4 9.6 17.5 7.5ZM2 12l3-3 3 3-3 3Zm10-3 3 3-3 3-3-3Zm7-0 3 3-3 3-3-3ZM6.5 16.5 12 22l5.5-5.5-2.1-2.1-3.4 3.4-3.4-3.4Z',
  HYPE:'M144 71.6991C144 119.306 114.866 134.582 99.5156 120.98C86.8804 109.889 83.1211 86.4521 64.116 84.0456C39.9942 81.0113 37.9057 113.133 22.0334 113.133C3.5504 113.133 0 86.2428 0 72.4315C0 58.3063 3.96809 39.0542 19.736 39.0542C38.1146 39.0542 39.1588 66.5722 62.132 65.1073C85.0007 63.5379 85.4184 34.8689 100.247 22.6271C113.195 12.0593 144 23.4641 144 71.6991Z',
@@ -35,10 +39,14 @@ const coinPaths={
  WTI:'M12 2C10 8 5 10 5 15a7 7 0 0 0 14 0c0-5-5-7-7-13Z'
 };
 function coin(asset){
-  if(!coinPaths[asset])return el('span',asset[0],'coin '+asset.toLowerCase());
+  const iconAsset=asset;
+  if(!coinPaths[iconAsset])return el('span',asset[0],'coin '+asset.toLowerCase());
   const node=el('span','','coin '+asset.toLowerCase()),svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),path=document.createElementNS('http://www.w3.org/2000/svg','path');
-  svg.setAttribute('viewBox',asset==='HYPE'?'0 0 144 144':'0 0 24 24');svg.setAttribute('aria-hidden','true');path.setAttribute('d',coinPaths[asset]);
-  const outline=['BTC','XRP','DOGE'].includes(asset);path.setAttribute('fill',outline?'none':'currentColor');path.setAttribute('stroke',outline?'currentColor':'none');path.setAttribute('stroke-width','1.7');svg.append(path);node.append(svg);return node;
+  svg.setAttribute('viewBox',asset==='HYPE'?'0 0 144 144':'0 0 24 24');svg.setAttribute('aria-hidden','true');path.setAttribute('d',coinPaths[iconAsset]);
+  const outline=['BTC','XRP','DOGE','PLATINUM','PALLADIUM','COPPER'].includes(asset);path.setAttribute('fill',outline?'none':'currentColor');path.setAttribute('stroke',outline?'currentColor':'none');path.setAttribute('stroke-width','1.7');if(asset==='NATGAS')path.setAttribute('fill-rule','evenodd');svg.append(path);
+  const symbol=({PLATINUM:'Pt',PALLADIUM:'Pd',COPPER:'Cu'})[asset];
+  if(symbol){const label=document.createElementNS('http://www.w3.org/2000/svg','text');label.setAttribute('x','12');label.setAttribute('y','15.5');label.setAttribute('text-anchor','middle');label.setAttribute('font-size','10');label.setAttribute('font-weight','700');label.setAttribute('fill','currentColor');label.textContent=symbol;svg.append(label);}
+  node.append(svg);return node;
 }
 const zone='America/New_York';
 const money=v=>numeric(v)?new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(v):'—';
@@ -99,7 +107,7 @@ function selectTradeAsset(asset){tradeAsset=asset;$('trade-asset').value=asset;o
 function dailyMarketStats(){return performanceData?.days.find(d=>d.date===selectedDay)?.assets||{};}
 function dailyCells(row,stats){
  const count=v=>numeric(v)?v.toLocaleString('en-US'):'—';
- for(const [key,format] of [['realized_pnl',signed],['completed_trades',count],['wins',count],['losses',count],['win_rate',v=>numeric(v)?(v*100).toFixed(1)+'%':'—']])row.append(el('td',format(stats[key]),key==='realized_pnl'?pnlClass(stats[key]):''));
+ for(const [key,format] of [['realized_pnl',signed],['completed_trades',count],['wins',count],['losses',count],['win_rate',v=>numeric(v)?(v*100).toFixed(1)+'%':'—'],['session_pnl',v=>stats.session_pending?'Pending':signed(v)]])row.append(el('td',format(stats[key]),['realized_pnl','session_pnl'].includes(key)?pnlClass(stats[key]):''));
 }
 function renderDailyMarkets(){
  $('daily-market-records').hidden=source==='example';if(source==='example')return;
@@ -107,27 +115,33 @@ function renderDailyMarkets(){
  $('daily-market-date').textContent=dateLabel(selectedDay)+' · '+$('calendar-asset').selectedOptions[0].text+' · After recorded fees';
  for(const [label,assets] of [['Digital assets',cryptoSymbols],['Commodities',commoditySymbols]]){
   const group=assets.filter(a=>included.includes(a));if(!group.length)continue;
-  const heading=el('tr','','group-row'),cell=el('td',label.toUpperCase());cell.colSpan=7;heading.append(cell);rows.push(heading);
+  const heading=el('tr','','group-row'),cell=el('td',label.toUpperCase());cell.colSpan=8;heading.append(cell);rows.push(heading);
   group.sort((a,b)=>(daily[b]?.realized_pnl??-Infinity)-(daily[a]?.realized_pnl??-Infinity));
   for(const asset of group){const stats=daily[asset]||{},row=el('tr','',asset===tradeAsset?'selected':''),market=el('td'),button=el('button','','market-button');button.type='button';button.setAttribute('aria-pressed',String(asset===tradeAsset));button.append(coin(asset),el('span',assetName(asset)));button.addEventListener('click',()=>selectTradeAsset(asset));market.append(button);
-   const rank=numeric(stats.realized_pnl)?1+group.filter(a=>numeric(daily[a]?.realized_pnl)&&daily[a].realized_pnl>stats.realized_pnl).length:'—';row.append(el('td',rank),market);dailyCells(row,stats);row.addEventListener('click',event=>{if(!event.target.closest('button'))selectTradeAsset(asset);});rows.push(row);
+   const rank=numeric(stats.realized_pnl)?1+included.filter(a=>numeric(daily[a]?.realized_pnl)&&daily[a].realized_pnl>stats.realized_pnl).length:'—';row.append(el('td',rank),market);dailyCells(row,stats);row.addEventListener('click',event=>{if(!event.target.closest('button'))selectTradeAsset(asset);});rows.push(row);
   }
  }
  replaceIfChanged($('daily-market-rows'),...rows);
- const total={};for(const key of ['realized_pnl','completed_trades','wins','losses'])total[key]=included.every(a=>numeric(daily[a]?.[key]))?included.reduce((n,a)=>n+daily[a][key],0):null;
- total.win_rate=total.completed_trades>0&&numeric(total.wins)&&included.every(a=>daily[a]?.unknown_pnl===0)?total.wins/total.completed_trades:null;
- const row=el('tr'),label=el('td','TOTAL');label.colSpan=2;row.append(label);dailyCells(row,total);replaceIfChanged($('daily-market-totals'),row);
+ const totals=[];
+ for(const [name,members] of [['CRYPTO TOTAL',cryptoSymbols],['COMMODITIES TOTAL',commoditySymbols],['TOTAL',included]]){
+  const selected=members.filter(a=>included.includes(a));if(!selected.length)continue;
+  const total={};for(const key of ['realized_pnl','completed_trades','wins','losses','session_pnl'])total[key]=selected.every(a=>numeric(daily[a]?.[key]))?selected.reduce((n,a)=>n+daily[a][key],0):null;
+  total.session_pending=selected.some(a=>daily[a]?.session_pending);
+  total.win_rate=total.completed_trades>0&&numeric(total.wins)&&selected.every(a=>daily[a]?.unknown_pnl===0)?total.wins/total.completed_trades:null;
+  const row=el('tr','',total.session_pending?'has-open-trade':''),label=el('td',name);label.colSpan=2;row.append(label);dailyCells(row,total);totals.push(row);
+ }
+ replaceIfChanged($('daily-market-totals'),...totals);
 }
 function render(){preserveNavigation(()=>{
  const demo=source==='example';$('example-notice').hidden=!demo;$('example-detail').hidden=!demo;$('recorded-trades').hidden=demo;$('calendar-asset').disabled=demo;$('edit-example').disabled=!demo;
  const all=performanceData?aggregate(performanceData.all_time):{pnl:null,trades:null};
  replaceIfChanged($('all-time-summary'),metric('Recorded realized P&L',signed(all.pnl),pnlClass(all.pnl)),metric('Completed trades',all.trades??'—'),metric('Scope',assetFilter==='all'?'All markets':$('calendar-asset').selectedOptions[0].text));
  renderDailyMarkets();$('day-trades-title').textContent=assetName(tradeAsset)+' · Trade records';replaceIfChanged($('day-trades-icon'),coin(tradeAsset));
- renderCalendar();const stats=dayStats(selectedDay);$('day-title').textContent=dateLabel(selectedDay);
+ renderIntraday();renderCalendar();const stats=dayStats(selectedDay);$('day-title').textContent=dateLabel(selectedDay);
  $('day-note').textContent=demo?'Example daily result':(selectedDay===performanceData?.today?'Today · In progress · ':'')+(stats.trades===0?'No recorded closed trades for this date.':'Realized results · '+$('calendar-asset').selectedOptions[0].text)+' · America/New_York';
  replaceIfChanged($('day-summary'),metric('Net P&L',signed(stats.pnl),pnlClass(stats.pnl)),metric('Closed trades',stats.trades??'—'));
 });}
-function chooseDay(day){selectedDay=day;anchor=day;offset=0;render();loadTrades();}
+function chooseDay(day){selectedDay=day;anchor=day;offset=0;render();loadTrades();loadIntraday();}
 function navigate(direction){anchor=view==='month'?shiftMonth(anchor,direction):shiftDay(anchor,7*direction);render();}
 function pagination(){$('day-trades-prev').disabled=offset===0||tradesBusy;$('day-trades-next').disabled=offset+25>=totalTrades||tradesBusy;$('day-trades-page').textContent=totalTrades?`${offset+1}–${Math.min(offset+25,totalTrades)} of ${totalTrades}`:'No records';}
 async function loadTrades(background=false){
@@ -152,14 +166,77 @@ async function refreshPerformance(){
  if(!initialized&&source==='recorded'){selectedDay=anchor=data.today;initialized=true;}
  $('connection').textContent=data.stale?'History delayed':'History connected';$('connection').className=data.stale?'stale':'';$('updated').textContent=timestamp(data.generated_at);
  $('performance-message').textContent=[data.stale?'History updates delayed; showing last available records.':'',data.missing_assets?.length?'Incomplete history: '+data.missing_assets.join(', ')+'. Affected totals are unavailable.':'',Object.values(data.all_time||{}).some(a=>a.unknown_pnl>0)?'Some completed trades have unknown P&L. Affected totals are unavailable.':'',data.excluded_undated_trades?data.excluded_undated_trades+' trades have no closure date and are excluded from the calendar.':''].filter(Boolean).join(' ');
- render();await loadTrades(true);
+ render();loadIntraday();await loadTrades(true);
  }catch(error){$('performance-message').textContent=error.message+(performanceData?' Previously loaded results may be out of date.':'');$('connection').textContent='History unavailable';$('connection').className='stale';}
  finally{performanceBusy=false;}
 }
 function csvFor(kind){const rows=[['Date','Net P&L (USD)','Completed trades','Scope','Source']];for(const day of periodDates(kind)){const stats=dayStats(day);rows.push([day,numeric(stats.pnl)?stats.pnl:'',stats.trades??'',source==='example'?'Example':assetFilter,source]);}return rows.map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\r\n');}
 function exportCSV(kind){const blob=new Blob([csvFor(kind)],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=el('a');link.href=url;link.download=`project15-${source}-${kind}-${anchor}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+const lineColors=['#f3f4f6','#ff8a3d','#a78bfa','#34d399','#38bdf8','#6385ff','#e879f9','#a3e635','#fff176','#94a3b8','#fb7185','#cbd5e1','#c4b5fd','#e7a06f','#67e8f9'];
+let intradayData=null,intradayBusy=false,intradaySignature='',inspectedTime=null,plotGeometry=null;
+const hiddenLines=new Set();
+function svgNode(tag,attrs,text){const node=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [key,value] of Object.entries(attrs))node.setAttribute(key,value);if(text!==undefined)node.textContent=text;return node;}
+function atTime(points,time){let low=0,high=points.length;while(low<high){const middle=(low+high)>>1;if(points[middle].timestamp<=time)low=middle+1;else high=middle;}return low?points[low-1].pnl:null;}
+function chartSeries(){
+ if(!intradayData)return [];
+ const assets=includedAssets(),times=[...new Set(assets.flatMap(a=>(intradayData.assets[a]||[]).map(p=>p.timestamp)))].sort((a,b)=>a-b);
+ const total=times.map(timestamp=>{const values=assets.map(a=>atTime(intradayData.assets[a]||[],timestamp));return {timestamp,pnl:values.every(numeric)?values.reduce((a,b)=>a+b,0):null};});
+ return [{key:'TOTAL',label:'Total',color:lineColors[0],points:total},...assets.map(a=>({key:a,label:assetName(a),color:lineColors[symbols.indexOf(a)+1],points:intradayData.assets[a]||[]}))];
+}
+function intradayTimeLabel(time,detail=false){return new Date(time*1000).toLocaleTimeString('en-US',{timeZone:zone,hour:'2-digit',minute:'2-digit',hourCycle:'h23',...(detail?{second:'2-digit',timeZoneName:'short'}:{})});}
+function inspectChart(time){
+ if(!plotGeometry||!intradayData)return;
+ inspectedTime=Math.max(intradayData.start,Math.min(time,intradayData.until));
+ const cursor=$('intraday-cursor');if(cursor){const x=plotGeometry.X(inspectedTime);cursor.setAttribute('x1',x);cursor.setAttribute('x2',x);}
+ const timeLabel=$('intraday-cursor-time'),timeBadge=$('intraday-cursor-label');if(timeLabel&&timeBadge){const x=Math.max(plotGeometry.left+28,Math.min(plotGeometry.X(inspectedTime),plotGeometry.right-28));timeBadge.setAttribute('transform',`translate(${x},267)`);timeLabel.textContent=inspectedTime>=intradayData.end?'24:00':intradayTimeLabel(inspectedTime);}
+ $('intraday-time').textContent=dateLabel(selectedDay)+' · '+(inspectedTime>=intradayData.end?'End of day (24:00)':intradayTimeLabel(inspectedTime,true));
+ replaceIfChanged($('intraday-values'),...chartSeries().filter(s=>!hiddenLines.has(s.key)).map(s=>{const item=el('div'),swatch=svgNode('svg',{viewBox:'0 0 12 12',width:12,height:12,'aria-hidden':'true'});swatch.append(svgNode('circle',{cx:6,cy:6,r:4,fill:s.color}));item.append(swatch,el('span',s.label),el('strong',signed(atTime(s.points,inspectedTime))));return item;}));
+}
+function renderIntraday(){
+ const demo=source==='example',valid=intradayData?.day===selectedDay&&!demo;
+ $('intraday-scope').textContent=dateLabel(selectedDay)+' · '+$('calendar-asset').selectedOptions[0].text+' · Cumulative realized P&L after fees';
+ $('intraday-plot').toggleAttribute('hidden',!valid);$('intraday-legend').hidden=!valid;$('intraday-values').hidden=!valid;$('intraday-time').hidden=!valid;$('intraday-toggle-all').hidden=!valid;
+ if(!valid){$('intraday-message').textContent=demo?'Example records contain daily totals only, so no intraday times are available.':'Loading intraday results…';intradaySignature='';plotGeometry=null;return;}
+ const series=chartSeries(),visible=series.filter(s=>!hiddenLines.has(s.key));
+ $('intraday-toggle-all').textContent=visible.length===series.length?'Deselect all':'Select all';
+ const unknown=series.some(s=>s.points.some(p=>!numeric(p.pnl)));
+ $('intraday-message').textContent=[intradayData.stale?'Intraday history is delayed or incomplete.':'',unknown?'Some P&L values are unavailable; affected lines stop where values become unknown.':'',intradayData.until===intradayData.start?'No elapsed trading time for this date.':''].filter(Boolean).join(' ');
+ const width=Math.max(300,Math.min(1250,$('intraday-plot').clientWidth||800)),height=320;
+ const signature=JSON.stringify([selectedDay,assetFilter,width,series,[...hiddenLines],intradayData.until]);if(signature===intradaySignature)return;intradaySignature=signature;
+ const legend=series.map(s=>{const button=el('button'),swatch=svgNode('svg',{viewBox:'0 0 20 12',width:20,height:12,'aria-hidden':'true'});swatch.append(svgNode('line',{x1:0,x2:20,y1:6,y2:6,stroke:s.color,'stroke-width':s.key==='TOTAL'?3:2}));button.type='button';button.setAttribute('aria-label',s.label+' P&L line');button.setAttribute('aria-pressed',String(!hiddenLines.has(s.key)));button.append(swatch,el('span',s.label));button.addEventListener('click',()=>{if(hiddenLines.has(s.key))hiddenLines.delete(s.key);else hiddenLines.add(s.key);renderIntraday();});return button;});replaceIfChanged($('intraday-legend'),...legend);
+ const values=visible.flatMap(s=>s.points.map(p=>p.pnl).filter(numeric));let min=values.reduce((a,b)=>Math.min(a,b),0),max=values.reduce((a,b)=>Math.max(a,b),0);const pad=(max-min)*.1||1;min-=pad;max+=pad;
+ const left=width<500?62:82,right=width-16,top=30,bottom=260,start=intradayData.start,end=intradayData.end;
+ const X=t=>left+(t-start)/(end-start)*(right-left),Y=v=>bottom-(v-min)/(max-min)*(bottom-top);plotGeometry={X,left,right,width,start,end};
+ const nodes=[svgNode('title',{},'Cumulative realized P&L · '+dateLabel(selectedDay)),svgNode('text',{x:left,y:16,fill:'#B5C1BC','font-size':12},'P&L (USD)')];
+ for(let i=0;i<=4;i++){const value=min+(max-min)*i/4,y=Y(value);nodes.push(svgNode('line',{x1:left,x2:right,y1:y,y2:y,stroke:'#2b4439'}),svgNode('text',{x:left-8,y:y+4,'text-anchor':'end',fill:'#B5C1BC','font-size':11},new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',notation:'compact',maximumFractionDigits:1}).format(value)));}
+ nodes.push(svgNode('line',{x1:left,x2:right,y1:Y(0),y2:Y(0),stroke:'#71877b','stroke-dasharray':'3 4'}));
+ const ticks=width<500?2:4;for(let i=0;i<=ticks;i++){const t=start+(end-start)*i/ticks;nodes.push(svgNode('text',{x:X(t),y:282,'text-anchor':i===0?'start':i===ticks?'end':'middle',fill:'#B5C1BC','font-size':11},i===ticks?'24:00':intradayTimeLabel(t)));}
+ nodes.push(svgNode('text',{x:(left+right)/2,y:308,'text-anchor':'middle',fill:'#B5C1BC','font-size':12},'Time · America/New_York'));
+ for(const series of [...visible.filter(s=>s.key!=='TOTAL'),...visible.filter(s=>s.key==='TOTAL')]){
+  let d='',previous=null;for(const point of series.points){if(!numeric(point.pnl)){previous=null;continue;}if(previous)d+='L'+X(point.timestamp)+','+Y(previous.pnl)+'L'+X(point.timestamp)+','+Y(point.pnl);else d+='M'+X(point.timestamp)+','+Y(point.pnl);previous=point;}
+  nodes.push(svgNode('path',{d,fill:'none',stroke:series.color,'stroke-width':series.key==='TOTAL'?3:1.7,'stroke-linejoin':'round','data-series':series.key}));
+ }
+ nodes.push(svgNode('line',{id:'intraday-cursor',x1:left,x2:left,y1:top,y2:bottom,stroke:'#cbd5e1','stroke-dasharray':'4 4','pointer-events':'none'}));
+ const timeBadge=svgNode('g',{id:'intraday-cursor-label','pointer-events':'none'});timeBadge.append(svgNode('rect',{x:-28,y:0,width:56,height:23,rx:5,fill:'#223b30',stroke:'#83b99e'}),svgNode('text',{id:'intraday-cursor-time',x:0,y:16,'text-anchor':'middle',fill:'#f3f4f6','font-size':12,'font-weight':600}));nodes.push(timeBadge);
+ $('intraday-plot').setAttribute('viewBox',`0 0 ${width} ${height}`);replaceIfChanged($('intraday-plot'),...nodes);
+ inspectChart(inspectedTime===null?intradayData.until:inspectedTime);
+}
+async function loadIntraday(){
+ if(source!=='recorded')return;
+ const day=selectedDay;if(intradayBusy)return;
+ intradayBusy=true;
+ try{const response=await fetch('/api/intraday?'+new URLSearchParams({day}),{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('Intraday results temporarily unavailable. Retrying automatically.');const data=await response.json();if(day!==selectedDay||source!=='recorded')return;if(intradayData?.day!==day)inspectedTime=null;intradayData=data;preserveNavigation(renderIntraday);}
+ catch(error){if(day===selectedDay&&source==='recorded')$('intraday-message').textContent=error.message+(intradayData?.day===day?' Last available chart retained.':'');}
+ finally{intradayBusy=false;if(source==='recorded'&&day!==selectedDay)loadIntraday();}
+}
+$('intraday-toggle-all').addEventListener('click',()=>{const series=chartSeries(),allSelected=series.every(s=>!hiddenLines.has(s.key));for(const s of series){if(allSelected)hiddenLines.add(s.key);else hiddenLines.delete(s.key);}renderIntraday();});
+$('intraday-plot').addEventListener('pointermove',event=>{if(!plotGeometry)return;const rect=$('intraday-plot').getBoundingClientRect(),x=(event.clientX-rect.left)*plotGeometry.width/rect.width;inspectChart(plotGeometry.start+(x-plotGeometry.left)/(plotGeometry.right-plotGeometry.left)*(plotGeometry.end-plotGeometry.start));});
+$('intraday-plot').addEventListener('click',event=>{if(!plotGeometry)return;const rect=$('intraday-plot').getBoundingClientRect(),x=(event.clientX-rect.left)*plotGeometry.width/rect.width;inspectChart(plotGeometry.start+(x-plotGeometry.left)/(plotGeometry.right-plotGeometry.left)*(plotGeometry.end-plotGeometry.start));});
+$('intraday-plot').addEventListener('keydown',event=>{if(!intradayData||!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const t=inspectedTime??intradayData.until;inspectChart(event.key==='Home'?intradayData.start:event.key==='End'?intradayData.until:t+(event.key==='ArrowLeft'?-900:900));});
+window.addEventListener('resize',()=>{intradaySignature='';renderIntraday();});
+
 for(const asset of symbols){for(const id of ['asset-options','trade-asset']){const option=el('option',assetName(asset));option.value=asset;$(id).append(option);}}
-$('data-source').addEventListener('change',()=>{source=$('data-source').value;tradeRequest++;tradesBusy=false;selectedDay=anchor=source==='example'?'2025-10-16':performanceData?.today||localToday();offset=0;view='month';render();loadTrades();});
+$('data-source').addEventListener('change',()=>{source=$('data-source').value;tradeRequest++;tradesBusy=false;selectedDay=anchor=source==='example'?'2025-10-16':performanceData?.today||localToday();offset=0;view='month';render();loadTrades();loadIntraday();});
 $('calendar-asset').addEventListener('change',()=>{assetFilter=$('calendar-asset').value;tradeAsset=includedAssets()[0];$('trade-asset').value=tradeAsset;offset=0;render();loadTrades();});
 for(const kind of ['week','month']){$(kind+'-view').addEventListener('click',()=>{view=kind;anchor=selectedDay;render();});$('export-'+kind).addEventListener('click',()=>exportCSV(kind));}
 $('period-prev').addEventListener('click',()=>navigate(-1));$('period-next').addEventListener('click',()=>navigate(1));$('today').addEventListener('click',()=>chooseDay(localToday()));$('signed-losses').addEventListener('change',render);
