@@ -1,3 +1,10 @@
+## FX sit-out update — October 27, 2026
+
+EUR/USD and GBP/USD now show no scheduled sit-out window; USD/JPY retains
+Monday–Friday 08:00–12:00 ET. Deploy the updated `public_static/viewer.js`
+to the website VPS using the procedure below. This source change is prepared
+locally; remote deployment remains with the owner.
+
 ## Forex source update — October 27, 2026
 
 The local source now supports EURUSD, GBPUSD, USDJPY, AUDUSD and USDCAD in the
