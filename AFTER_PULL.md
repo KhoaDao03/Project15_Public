@@ -1,5 +1,7 @@
 # After pulling new Public UI code
 
+> Superseded for the running website: a permanent systemd service and Caddy now serve the UI from `/srv/public-web/project15`. Use [DEPLOYMENT.md](DEPLOYMENT.md) to deploy pulled code. The instructions below describe the former standalone preview; do not launch it on port 8080, which is now used by Caddy.
+
 Use this guide for the current Project15 preview on `147.224.164.255`. The checkout is `/home/ubuntu/Project15_Public`; the preview reads synced data from `/var/lib/project15-public` and listens on `127.0.0.1:8080`.
 
 First confirm that your `git pull` completed successfully. If Git reported an error or conflict, resolve it before continuing. These instructions do not require changes to Caddy, DNS, or the Bot VPS.

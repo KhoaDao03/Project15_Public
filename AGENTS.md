@@ -8,6 +8,19 @@ Read `README.md` before making changes. Inspect the actual host and service conf
 
 ## Handoff state
 
+HTTPS cutover verified on 2026-10-27 (America/New_York): public DNS lookup returned apex `147.224.164.255`, TTL 60; `www` CNAME to apex, TTL 3600, and no destination AAAA record. Activated the previously prepared HTTPS Caddyfile under the user's existing authorization, backing up the previous active configuration at `/etc/caddy/Caddyfile.before-https`. Caddy obtained both certificates successfully; pinned new-VPS HTTPS requests for both domains returned 200 with certificate verification successful. Logs show external CA HTTP-01 challenges reached this VPS. These results supersede pending DNS/HTTPS and unverified external HTTP access notes below. DNS edits and Oracle console changes were performed outside this session; no old website was stopped.
+
+Public access follow-up: authorized host INPUT rule now allows new TCP 80/443 connections, persisted in `/etc/iptables/rules.v4`. Existing SSH/rules preserved; backup `/var/backups/project15-public-access-20261027T033131Z/`. No Oracle CLI/SDK/configured credentials or suitable connected management plugin was found, so Oracle cloud rules remain unverified/unchanged. Public-IP probe from this VPS timed out; external reachability is unverified. User identified IONOS as DNS provider; DNS still points to the old Bot VPS. HTTPS activation remains pending cloud access and DNS cutover. These updates supersede the host-firewall status recorded below.
+
+Permanent service/Caddy setup verified on 2026-10-26 (America/New_York):
+
+- Installed application files from source revision `a2aaf01` into `/srv/public-web/project15` with an independently installed venv. This is an administrator-owned runtime directory, not a Git checkout. Source and local work remain in `/home/ubuntu/Project15_Public`. The source repo currently tracks `.venv` and bytecode; these were excluded from deployment, not deleted or rewritten.
+- Enabled `project15-public-site.service` and `.socket`. The app runs as `public-web` with the original network isolation/resource limits; systemd passes Unix socket FD 3, with socket ownership `public-web:caddy` and mode `0660`. Caddy receives no write access to the data directory.
+- Caddy now proxies localhost port 8080 to the permanent service, preserving the SSH tunnel workflow. Do not start a separate Uvicorn preview on that port. HTTP Host routes for `147.224.164.255`, `dekings.org`, and `www.dekings.org` are active; the previous default file-server route is preserved.
+- After a service restart, both pages and all four APIs returned HTTP 200 through Caddy; data was fresh, no markets were missing, and snapshot timestamps advanced. Denied private/raw-data routes returned 404 and POST returned 405. Browser interaction and external network reachability were not tested.
+- DNS still resolved both domain names to `108.175.13.244`. HTTPS config is prepared/validated at `/etc/caddy/Caddyfile.https-ready`, not active. Host firewall currently rejects new HTTP/HTTPS connections, and cloud network rules were not changed. Public connectivity, DNS cutover, and HTTPS activation remain outstanding.
+- Rollback files: `/var/backups/project15-production-20261027T031951Z/`. Future updates must follow `DEPLOYMENT.md`; pulling the source alone does not update installed runtime files. No Bot VPS, DNS, firewall, or old public website changes were performed.
+
 Receiver setup verified on 2026-10-26 (America/New_York):
 
 - On the Public UI host `oracle` (expected public address `147.224.164.255`), SSH listens on port 22. The interface uses private address `10.0.0.45`; public routing still requires the sender's connection test.

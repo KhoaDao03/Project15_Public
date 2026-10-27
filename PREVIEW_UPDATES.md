@@ -1,5 +1,7 @@
 # Deploying Public UI updates — current VPS setup
 
+> Superseded for the running website: use [DEPLOYMENT.md](DEPLOYMENT.md). The permanent service runs installed files in `/srv/public-web/project15`; pulling this source checkout alone no longer updates the served UI. Caddy now owns localhost port 8080. The preview instructions below are retained as historical reference.
+
 These instructions apply to the temporary preview on the Public UI VPS:
 
 - Repository: `/home/ubuntu/Project15_Public`

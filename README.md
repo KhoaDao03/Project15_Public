@@ -1,5 +1,7 @@
 # Project15 Public Dashboard
 
+For this VPS's permanent service, deployed paths, update commands, and pending DNS/HTTPS cutover, see [DEPLOYMENT.md](DEPLOYMENT.md). The service template now uses `project15-public-site.socket` to pass a permission-controlled Unix socket to Uvicorn; install both units together.
+
 Standalone, read-only website for Project15's published trading results. This repository contains the public server and browser assets copied from Project15. It does not contain the trading engine, exchange credentials, private dashboard, or public-data exporter.
 
 Copying these files did not change the running deployment. The separate-VPS migration and automatic data transfer still need to be configured. This repository is now an independent copy; changes in the original Project15 folder do not automatically appear here.
@@ -97,9 +99,9 @@ The service template expects this layout:
 5. Install and start the service:
 
    ```bash
-   sudo install -m 0644 project15-public-site.service /etc/systemd/system/project15-public-site.service
+   sudo install -m 0644 project15-public-site.service project15-public-site.socket /etc/systemd/system/
    sudo systemctl daemon-reload
-   sudo systemctl enable --now project15-public-site
+   sudo systemctl enable --now project15-public-site.socket project15-public-site.service
    sudo systemctl status project15-public-site
    ```
 

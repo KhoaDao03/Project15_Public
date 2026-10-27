@@ -1,0 +1,13 @@
+[Unit]
+Description=Project15 public website Unix socket
+
+[Socket]
+ListenStream=/run/project15-public/http.sock
+SocketUser=public-web
+SocketGroup=caddy
+SocketMode=0660
+DirectoryMode=0755
+RemoveOnStop=true
+
+[Install]
+WantedBy=sockets.target
