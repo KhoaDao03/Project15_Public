@@ -107,15 +107,16 @@ function selectTradeAsset(asset){tradeAsset=asset;$('trade-asset').value=asset;o
 function dailyMarketStats(){return performanceData?.days.find(d=>d.date===selectedDay)?.assets||{};}
 function dailyCells(row,stats){
  const count=v=>numeric(v)?v.toLocaleString('en-US'):'—';
- for(const [key,format] of [['realized_pnl',signed],['completed_trades',count],['wins',count],['losses',count],['win_rate',v=>numeric(v)?(v*100).toFixed(1)+'%':'—'],['session_pnl',v=>stats.session_pending?'Pending':signed(v)]])row.append(el('td',format(stats[key]),['realized_pnl','session_pnl'].includes(key)?pnlClass(stats[key]):''));
+ for(const [key,format] of [['realized_pnl',signed],['completed_trades',count],['wins',count],['losses',count],['win_rate',v=>numeric(v)?(v*100).toFixed(1)+'%':'—']])row.append(el('td',format(stats[key]),key==='realized_pnl'?pnlClass(stats[key]):''));
 }
+
 function renderDailyMarkets(){
  $('daily-market-records').hidden=source==='example';if(source==='example')return;
  const daily=dailyMarketStats(),rows=[],included=includedAssets();
  $('daily-market-date').textContent=dateLabel(selectedDay)+' · '+$('calendar-asset').selectedOptions[0].text+' · After recorded fees';
  for(const [label,assets] of [['Digital assets',cryptoSymbols],['Commodities',commoditySymbols]]){
   const group=assets.filter(a=>included.includes(a));if(!group.length)continue;
-  const heading=el('tr','','group-row'),cell=el('td',label.toUpperCase());cell.colSpan=8;heading.append(cell);rows.push(heading);
+  const heading=el('tr','','group-row'),cell=el('td',label.toUpperCase());cell.colSpan=7;heading.append(cell);rows.push(heading);
   group.sort((a,b)=>(daily[b]?.realized_pnl??-Infinity)-(daily[a]?.realized_pnl??-Infinity));
   for(const asset of group){const stats=daily[asset]||{},row=el('tr','',asset===tradeAsset?'selected':''),market=el('td'),button=el('button','','market-button');button.type='button';button.setAttribute('aria-pressed',String(asset===tradeAsset));button.append(coin(asset),el('span',assetName(asset)));button.addEventListener('click',()=>selectTradeAsset(asset));market.append(button);
    const rank=numeric(stats.realized_pnl)?1+included.filter(a=>numeric(daily[a]?.realized_pnl)&&daily[a].realized_pnl>stats.realized_pnl).length:'—';row.append(el('td',rank),market);dailyCells(row,stats);row.addEventListener('click',event=>{if(!event.target.closest('button'))selectTradeAsset(asset);});rows.push(row);
@@ -125,7 +126,7 @@ function renderDailyMarkets(){
  const totals=[];
  for(const [name,members] of [['CRYPTO TOTAL',cryptoSymbols],['COMMODITIES TOTAL',commoditySymbols],['TOTAL',included]]){
   const selected=members.filter(a=>included.includes(a));if(!selected.length)continue;
-  const total={};for(const key of ['realized_pnl','completed_trades','wins','losses','session_pnl'])total[key]=selected.every(a=>numeric(daily[a]?.[key]))?selected.reduce((n,a)=>n+daily[a][key],0):null;
+  const total={};for(const key of ['realized_pnl','completed_trades','wins','losses'])total[key]=selected.every(a=>numeric(daily[a]?.[key]))?selected.reduce((n,a)=>n+daily[a][key],0):null;
   total.session_pending=selected.some(a=>daily[a]?.session_pending);
   total.win_rate=total.completed_trades>0&&numeric(total.wins)&&selected.every(a=>daily[a]?.unknown_pnl===0)?total.wins/total.completed_trades:null;
   const row=el('tr','',total.session_pending?'has-open-trade':''),label=el('td',name);label.colSpan=2;row.append(label);dailyCells(row,total);totals.push(row);

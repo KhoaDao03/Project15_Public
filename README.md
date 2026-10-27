@@ -182,6 +182,10 @@ Commodity open-position highlights use 8% red when the model opposes the held si
 
 The source dashboard allows reference prices up to five seconds old for display. Trading freshness limits remain separate and unchanged. This limit is implemented in the bot VPS source dashboard, not this standalone website.
 
-Both market-record tables include Latest session Δ P&L: realized net P&L for the latest completed 15-minute contract, matched by contract ticker rather than trade exit time. Skipped intervals show zero; open/unsettled trades show Pending. Performance History uses the latest interval ending on its selected New York date. The source server supplies session_pnl, session_pending, and session_close through /api/performance.
+The Market dashboard records table includes Latest session Δ P&L (Performance History does not display this column): realized net P&L for the latest completed 15-minute contract, matched by contract ticker rather than trade exit time. Skipped intervals show zero; open/unsettled trades show Pending. Performance History uses the latest interval ending on its selected New York date. The source server supplies session_pnl, session_pending, and session_close through /api/performance.
 
 The Market dashboard defaults to Today (America/New_York). Its All time / Today switch updates the summary, market records, rankings, and group totals; live open counts and current streaks remain independent of the selected period.
+
+Latest-session P&L also shows a current-interval realized crypto loss before that interval ends. Crypto market rows use an 8% red highlight only for an early realized loss while that contract interval is still active; the background clears when the interval ends. If other trades in the same contract remain open, the known loss is shown with Pending. Historical selected dates continue to use their final completed interval.
+
+Market detail shows Average net per contract in cents: all-time realized net P&L × 100 divided by contracts bought in completed trades. Open trades are excluded. Missing P&L or bought quantities make this average unavailable.

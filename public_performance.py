@@ -18,11 +18,17 @@ def trade_day(value):
 
 def empty_stats():
     return dict(realized_pnl=0.0, completed_trades=0, wins=0, losses=0,
-                breakeven_trades=0, unknown_pnl=0, win_rate=None, opened_trades=0, open_positions=0)
+                breakeven_trades=0, unknown_pnl=0, win_rate=None, opened_trades=0, open_positions=0,
+                completed_contracts=0.0, unknown_contracts=0, average_net_cents=None)
 
 
 def record_close(stats, row):
     stats["completed_trades"] += 1
+    contracts = row.get('bought')
+    if type(contracts) in (int, float) and math.isfinite(contracts) and contracts > 0:
+        stats['completed_contracts'] += contracts
+    else:
+        stats['unknown_contracts'] += 1
     pnl = row.get("net_pnl")
     if type(pnl) not in (int, float) or not math.isfinite(pnl):
         stats["unknown_pnl"] += 1
@@ -38,20 +44,32 @@ def finish(stats):
         stats["realized_pnl"] = round(stats["realized_pnl"], 8)
         if stats["completed_trades"]:
             stats["win_rate"] = stats["wins"] / stats["completed_trades"]
+    if not stats['unknown_pnl'] and not stats['unknown_contracts'] and stats['completed_contracts'] > 0:
+        stats['average_net_cents'] = stats['realized_pnl'] * 100 / stats['completed_contracts']
     return stats
 
 
-def session_stats(rows, asset, as_of):
+def session_stats(rows, asset, as_of, include_early_loss=False):
     close = math.floor(as_of / 900) * 900
-    local = datetime.fromtimestamp(close, ZoneInfo(TIMEZONE))
-    month = ('JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC')[local.month-1]
-    ticker = f"KX{asset}15M-{local:%y}{month}{local:%d%H%M}-{local:%M}"
-    matches = rows.get(ticker, [])
+    def trades_at(timestamp):
+        local = datetime.fromtimestamp(timestamp, ZoneInfo(TIMEZONE))
+        month = ('JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC')[local.month-1]
+        ticker = f"KX{asset}15M-{local:%y}{month}{local:%d%H%M}-{local:%M}"
+        return rows.get(ticker, [])
+    matches = trades_at(close)
+    early = False
+    if include_early_loss and asset in ('BTC','ETH','SOL','XRP','BNB','HYPE','DOGE'):
+        current = trades_at(close + 900)
+        closed = [r for r in current if r.get('status') == 'CLOSED']
+        if closed and all(type(r.get('net_pnl')) in (int,float) and math.isfinite(r['net_pnl'])
+                          and type(r.get('exit_timestamp')) in (int,float) and r['exit_timestamp'] <= as_of
+                          for r in closed) and math.fsum(r['net_pnl'] for r in closed) < 0:
+            matches, close, early = current, close + 900, True
     pending = any(r.get('status') == 'OPEN' for r in matches)
     values = [r.get('net_pnl') for r in matches if r.get('status') == 'CLOSED']
     known = all(type(v) in (int,float) and math.isfinite(v) for v in values)
-    return dict(session_pnl=round(math.fsum(values),8) if known and not pending else None,
-                session_pending=pending, session_close=close)
+    return dict(session_pnl=round(math.fsum(values),8) if known and (early or not pending) else None,
+                session_pending=pending, session_close=close, session_early_exit=early)
 
 
 def build_performance(histories, assets, now):
@@ -75,7 +93,7 @@ def build_performance(histories, assets, now):
             grouped.setdefault(row.get('market'), []).append(row)
         sessions[asset] = grouped
         total = empty_stats()
-        total.update(session_stats(grouped, asset, now))
+        total.update(session_stats(grouped, asset, now, include_early_loss=True))
         streak = longest_win = longest_loss = 0
         for row in sorted((r for r in data["rows"] if r.get("status") == "CLOSED"),
                           key=lambda r: (r.get("exit_timestamp") or r.get("timestamp") or 0, r.get("market", ""))):
@@ -115,7 +133,7 @@ def build_performance(histories, assets, now):
         day_assets = {}
         for asset in all_time:
             value = finish(stats.get(asset, empty_stats()))
-            value.update(session_stats(sessions[asset], asset, as_of))
+            value.update(session_stats(sessions[asset], asset, as_of, include_early_loss=key == today))
             day_assets[asset] = value
         days.append(dict(date=key, assets=day_assets))
         day += timedelta(days=1)

@@ -100,3 +100,20 @@ table .market-button{margin-inline:auto;justify-content:center}
 .dashboard-title-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px 24px}.dashboard-title-row .record-scope{margin:0;flex-shrink:0}.dashboard-title-row h1{margin:0}#record-scope-note{margin:0 0 16px}
 
 #totals tr.has-open-trade td,#daily-market-totals tr.has-open-trade td{background:rgb(34 211 238 / 6%);box-shadow:none}
+
+/* Early realized crypto losses highlight the whole row until the interval ends. */
+#comparison tr:has(td.session-loss) td,#daily-market-rows tr:has(td.session-loss) td{background:rgb(248 113 113 / 8%)!important}
+#comparison tr.selected:has(td.session-loss) td,#daily-market-rows tr.selected:has(td.session-loss) td{background:linear-gradient(rgb(248 113 113 / 8%),rgb(248 113 113 / 8%)),#183c2b!important}
+#comparison tr.trading-off:has(td.session-loss) td{background:linear-gradient(rgb(248 113 113 / 8%),rgb(248 113 113 / 8%)),#26282a!important}
+#comparison tr.trading-off.selected:has(td.session-loss) td{background:linear-gradient(rgb(248 113 113 / 8%),rgb(248 113 113 / 8%)),#303c37!important}
+
+#average-contract-profit .positive{color:var(--accent)}#average-contract-profit .negative{color:#ff8b80}
+
+/* Reserve equal space without an internal detail scrollbar. */
+.market-grid{align-items:stretch}
+.market-grid>.panel{min-height:800px;min-width:0}
+.market-grid>.detail{height:auto;overflow:visible}
+.detail>#detail{overflow:visible}
+
+@media(max-width:480px){.market-grid>.panel{min-height:850px}}
+@media(min-width:801px) and (max-width:1100px){.market-grid>.panel{min-height:835px}}
