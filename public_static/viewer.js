@@ -29,7 +29,7 @@ const signedMoney=value=>numeric(value)?(value>0?'+':'')+money(value):'—';
 const pnlClass=value=>value>0?'positive':value<0?'negative':'';
 const percent=value=>numeric(value)?(value*100).toFixed(1)+'%':'—';
 const count=value=>numeric(value)?value.toLocaleString('en-US'):'—';
-const cryptoSymbols=['BTC','ETH','SOL','XRP','BNB','HYPE','DOGE'];
+const cryptoSymbols=['BTC','ETH','SOL','XRP','BNB','DOGE'];
 const commoditySymbols=['GOLD','SILVER','WTI','PLATINUM','PALLADIUM','COPPER','NATGAS'];
 const symbols=[...cryptoSymbols,...commoditySymbols];
 const names=asset=>asset==='WTI'?'OIL / WTI':asset;
@@ -40,7 +40,6 @@ const coinPaths={
  NATGAS:'M13 1c1 6-5 7-3 12 2-1 3-3 3-5 4 3 7 6 6 10a7 7 0 0 1-14-1C4 10 10 8 13 1Zm-1 12c0 3-3 4-3 6a3 3 0 0 0 6 0c0-2-2-3-3-6Z',
  DOGE:'M8 5h4a7 7 0 0 1 0 14H8V5Zm-3 7h9',
  BNB:'M12 2 6.5 7.5 8.6 9.6 12 6.2 15.4 9.6 17.5 7.5ZM2 12l3-3 3 3-3 3Zm10-3 3 3-3 3-3-3Zm7-0 3 3-3 3-3-3ZM6.5 16.5 12 22l5.5-5.5-2.1-2.1-3.4 3.4-3.4-3.4Z',
- HYPE:'M144 71.6991C144 119.306 114.866 134.582 99.5156 120.98C86.8804 109.889 83.1211 86.4521 64.116 84.0456C39.9942 81.0113 37.9057 113.133 22.0334 113.133C3.5504 113.133 0 86.2428 0 72.4315C0 58.3063 3.96809 39.0542 19.736 39.0542C38.1146 39.0542 39.1588 66.5722 62.132 65.1073C85.0007 63.5379 85.4184 34.8689 100.247 22.6271C113.195 12.0593 144 23.4641 144 71.6991Z',
  BTC:'M10 5v14M13 5v14M7 7h7a3 3 0 0 1 0 6H8m1 0h6a3 3 0 0 1 0 6H7',
  ETH:'M12 2 5 12l7 4 7-4-7-10Zm-7 13 7 7 7-7-7 4-7-4Z',
  SOL:'m6 5-3 3h15l3-3H6Zm-3 6 3 3h15l-3-3H3Zm3 6-3 3h15l3-3H6Z',
@@ -55,7 +54,7 @@ function coin(asset){
   const iconAsset=asset;
   if(!coinPaths[iconAsset])return el('span',asset[0],'coin '+asset.toLowerCase());
   const node=el('span','','coin '+asset.toLowerCase()),svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),path=document.createElementNS('http://www.w3.org/2000/svg','path');
-  svg.setAttribute('viewBox',asset==='HYPE'?'0 0 144 144':'0 0 24 24');svg.setAttribute('aria-hidden','true');path.setAttribute('d',coinPaths[iconAsset]);
+  svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');path.setAttribute('d',coinPaths[iconAsset]);
   const outline=['BTC','XRP','DOGE','PLATINUM','PALLADIUM','COPPER'].includes(asset);path.setAttribute('fill',outline?'none':'currentColor');path.setAttribute('stroke',outline?'currentColor':'none');path.setAttribute('stroke-width','1.7');if(asset==='NATGAS')path.setAttribute('fill-rule','evenodd');svg.append(path);
   const symbol=({PLATINUM:'Pt',PALLADIUM:'Pd',COPPER:'Cu'})[asset];
   if(symbol){const label=document.createElementNS('http://www.w3.org/2000/svg','text');label.setAttribute('x','12');label.setAttribute('y','15.5');label.setAttribute('text-anchor','middle');label.setAttribute('font-size','10');label.setAttribute('font-weight','700');label.setAttribute('fill','currentColor');label.textContent=symbol;svg.append(label);}
@@ -109,7 +108,7 @@ function entryConfidenceView(data,asset,detail=false){
 }
 function sitoutSchedule(asset){
   // Match the live executor: commodities are exempt.
-  if(!['BTC','ETH','SOL','XRP','BNB','HYPE','DOGE'].includes(asset))return null;
+  if(!['BTC','ETH','SOL','XRP','BNB','DOGE'].includes(asset))return null;
   const section=el('section','','streaks sitout-schedule');
   section.setAttribute('aria-label','Entry sit-out windows');
   section.append(el('strong','Entry sit-out windows · ET'));

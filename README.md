@@ -10,11 +10,11 @@ AI agents working on the Website VPS must read [AGENTS.md](AGENTS.md) first. It 
 
 ## Pages
 
-- **Market dashboard (`/`)**: all-time results, separately ranked crypto and commodity records, market status, selected-market details, and trade history. Open-position counts drive cyan highlights. Tied crypto leaders are not named in the Top crypto summary.
+- **Market dashboard (`/`)**: all-time results, crypto and commodity records grouped separately with overall rankings, market status, selected-market details, and trade history. Open-position counts drive cyan highlights. Top market includes crypto and commodities; tied leaders are not named.
 - **Performance history (`/performance`)**: monthly and weekly P&L calendar, market filters, selected-day market records, and selectable market rows linked to daily trade records. Week/month CSV exports retain signed P&L values.
 - **Example calendar**: optional October 2025 sample data. Visitors can edit example daily records in browser memory; edits disappear on reload and never alter recorded trades.
 
-Both pages use the Project15 theme. Supported markets are BTC, ETH, SOL, XRP, BNB, HYPE, DOGE, GOLD, SILVER, WTI (displayed as OIL / WTI), PLATINUM, PALLADIUM, COPPER, and NATGAS (natural gas).
+Both pages use the Project15 theme. Supported markets are BTC, ETH, SOL, XRP, BNB, DOGE, GOLD, SILVER, WTI (displayed as OIL / WTI), PLATINUM, PALLADIUM, COPPER, and NATGAS (natural gas).
 
 ## Repository contents
 
@@ -147,7 +147,7 @@ Separating the VPSs reduces competition with the bot for CPU and memory. It does
 
 History query parameters: `offset` (default 0), `limit` (default 25, maximum 100), optional `day=YYYY-MM-DD`, and `basis=closed` or `basis=opened`. Supported years for day filtering are 2000–2100.
 
-The chart beneath the performance calendar shows each of the 14 markets and total realized P&L after fees, starting at zero each day. Hover, tap, or use arrow keys to inspect values; legend buttons toggle lines. The market filter also filters the total. Unknown P&L stays unavailable. Example records have no intraday chart because they contain daily totals only. Intraday responses are cached for two seconds and share the trade-history request limits.
+The chart beneath the performance calendar shows each of the 13 markets and total realized P&L after fees, starting at zero each day. Hover, tap, or use arrow keys to inspect values; legend buttons toggle lines. The market filter also filters the total. Unknown P&L stays unavailable. Example records have no intraday chart because they contain daily totals only. Intraday responses are cached for two seconds and share the trade-history request limits.
 
 Requests using methods other than GET/HEAD are rejected. There are no public trading controls or write APIs. Example calendar edits and CSV downloads happen in the browser.
 

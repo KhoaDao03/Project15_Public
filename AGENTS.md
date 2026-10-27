@@ -70,7 +70,7 @@ The supplied production service is network-isolated and accepts Caddy through `/
 
 - Keep the existing Project15 dark green theme, DK logos, navigation, educational-purpose text, and strategy credit.
 - Keep crypto and commodities separate using explicit symbol groups. WTI displays as OIL / WTI.
-- Top crypto considers crypto only and names a winner only when there is a single leader.
+- Top market considers crypto and commodities and names a winner only when there is a single leader. Keep the six crypto markets separate from the seven commodities; GOLD belongs to commodities.
 - Open-position counts and cyan highlights must agree with the exported trade snapshot. Do not overwrite them with delayed all-time statistics.
 - The public pages refresh approximately every second without page reloads. Preserve selected markets/dates, scroll positions, keyboard focus, and pagination. Avoid overlapping fetches and discard obsolete responses after selection changes.
 - Preserve the calendar's month/week views, date navigation, market filters, signed CSV exports, selected-day market records, and linked trade records.

@@ -58,7 +58,7 @@ def session_stats(rows, asset, as_of, include_early_loss=False):
         return rows.get(ticker, [])
     matches = trades_at(close)
     early = False
-    if include_early_loss and asset in ('BTC','ETH','SOL','XRP','BNB','HYPE','DOGE'):
+    if include_early_loss and asset in ('BTC','ETH','SOL','XRP','BNB','DOGE'):
         current = trades_at(close + 900)
         closed = [r for r in current if r.get('status') == 'CLOSED']
         if closed and all(type(r.get('net_pnl')) in (int,float) and math.isfinite(r['net_pnl'])
