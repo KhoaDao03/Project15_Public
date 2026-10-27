@@ -105,7 +105,7 @@ function renderCalendar(){
  const days=periodDates(),values=days.map(dayStats),available=source==='example'||days.some(d=>performanceData?.days.some(r=>r.date===d));
  const complete=available&&values.every((v,i)=>numeric(v.pnl)||!performanceData?.days.some(r=>r.date===days[i]));
  const pnl=complete?values.reduce((s,v)=>s+(v.pnl||0),0):null,trades=values.every(v=>numeric(v.trades))?values.reduce((s,v)=>s+v.trades,0):null;
- $('period-summary').textContent=(source==='example'?'Example · ':assetFilter==='all'?'All markets · ':$('calendar-asset').selectedOptions[0].text+' · ')+signed(pnl)+' net · '+(trades??'—')+' closed trades'+(values.some(v=>v.partial)?' · available markets only':'');
+ $('period-summary').textContent=(source==='example'?'Example · ':assetFilter==='all'?'All markets · ':$('calendar-asset').selectedOptions[0].text+' · ')+signed(pnl)+' net · '+(trades??'—')+' closed trades';
  const cells=[];
  for(let i=0;i<length;i++){
   const day=shiftDay(start,i),stats=dayStats(day),active=day===selectedDay;
@@ -149,14 +149,14 @@ function renderDailyMarkets(){
   total.session_pending=selected.some(a=>daily[a]?.session_pending);
   const rated=selected.map(a=>daily[a]).filter(a=>numeric(a?.wins)&&numeric(a?.completed_trades)&&a?.unknown_pnl===0),completed=rated.reduce((n,a)=>n+a.completed_trades,0);
   total.win_rate=completed>0?rated.reduce((n,a)=>n+a.wins,0)/completed:null;
-  const row=el('tr','',total.session_pending?'has-open-trade':''),label=el('td',name+(selected.some(a=>!numeric(daily[a]?.realized_pnl))?' · available':''));label.colSpan=2;row.append(label);dailyCells(row,total);totals.push(row);
+  const row=el('tr','',total.session_pending?'has-open-trade':''),label=el('td',name);label.colSpan=2;row.append(label);dailyCells(row,total);totals.push(row);
  }
  replaceIfChanged($('daily-market-totals'),...totals);
 }
 function render(){preserveNavigation(()=>{
  const demo=source==='example';$('example-notice').hidden=!demo;$('example-detail').hidden=!demo;$('recorded-trades').hidden=demo;$('calendar-asset').disabled=demo;$('edit-example').disabled=!demo;
  const all=performanceData?aggregate(performanceData.all_time):{pnl:null,trades:null};
- replaceIfChanged($('all-time-summary'),metric('Recorded realized P&L'+(all.partial?' · available':''),signed(all.pnl),pnlClass(all.pnl)),metric('Completed trades',all.trades??'—'),metric('Scope',assetFilter==='all'?'All markets':$('calendar-asset').selectedOptions[0].text));
+ replaceIfChanged($('all-time-summary'),metric('Recorded realized P&L',signed(all.pnl),pnlClass(all.pnl)),metric('Completed trades',all.trades??'—'),metric('Scope',assetFilter==='all'?'All markets':$('calendar-asset').selectedOptions[0].text));
  renderDailyMarkets();$('day-trades-title').textContent=assetName(tradeAsset)+' · Trade records';replaceIfChanged($('day-trades-icon'),coin(tradeAsset));
  renderIntraday();renderCalendar();const stats=dayStats(selectedDay);$('day-title').textContent=dateLabel(selectedDay);
  $('day-note').textContent=demo?'Example daily result':(selectedDay===performanceData?.today?'Today · In progress · ':'')+(stats.trades===0?'No recorded closed trades for this date.':'Realized results · '+$('calendar-asset').selectedOptions[0].text)+' · America/New_York';
@@ -202,7 +202,7 @@ function chartSeries(){
  if(!intradayData)return [];
  const assets=includedAssets(),times=[...new Set(assets.flatMap(a=>(intradayData.assets[a]||[]).map(p=>p.timestamp)))].sort((a,b)=>a-b);
  const total=times.map(timestamp=>{const values=assets.map(a=>atTime(intradayData.assets[a]||[],timestamp));return {timestamp,pnl:availableSum(values)};});
- return [{key:'TOTAL',label:assets.some(a=>(intradayData.assets[a]||[]).some(p=>!numeric(p.pnl))||!intradayData.assets[a]?.length)?'Total · available':'Total',color:lineColors[0],points:total},...assets.map(a=>({key:a,label:assetName(a),color:lineColors[symbols.indexOf(a)+1],points:intradayData.assets[a]||[]}))];
+ return [{key:'TOTAL',label:'Total',color:lineColors[0],points:total},...assets.map(a=>({key:a,label:assetName(a),color:lineColors[symbols.indexOf(a)+1],points:intradayData.assets[a]||[]}))];
 }
 function intradayTimeLabel(time,detail=false){return new Date(time*1000).toLocaleTimeString('en-US',{timeZone:zone,hour:'2-digit',minute:'2-digit',hourCycle:'h23',...(detail?{second:'2-digit',timeZoneName:'short'}:{})});}
 function inspectChart(time){
