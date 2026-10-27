@@ -1,3 +1,14 @@
+## Forex source update — October 27, 2026
+
+The local source now supports EURUSD, GBPUSD, USDJPY, AUDUSD and USDCAD in the
+market dashboard, history and performance views. Forex prices use five decimals
+(three for USD/JPY). This source update has **not** been deployed to the website
+VPS; the owner will deploy it. Copy `public_site.py`,
+`public_static/viewer.js`, `public_static/performance.js` and `public_static/viewer.css` into the existing
+installed runtime using the backup/restart procedure below. No dependency,
+Caddy, socket or credential changes are needed. Verify `/api/history/EURUSD`
+and the Forex table after deployment. The bot VPS supplies the five new histories.
+
 # Permanent Public UI deployment
 
 ## Current public status — 2026-10-27

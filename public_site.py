@@ -21,7 +21,7 @@ if __package__:
 else:  # The isolated website is installed without the trading package.
     from public_performance import build_performance, build_intraday
 
-ASSETS = ("BTC", "ETH", "SOL", "XRP", "BNB", "DOGE", "GOLD", "SILVER", "WTI", "PLATINUM", "PALLADIUM", "COPPER", "NATGAS")
+ASSETS = ("BTC", "ETH", "SOL", "XRP", "BNB", "DOGE", "GOLD", "SILVER", "WTI", "PLATINUM", "PALLADIUM", "COPPER", "NATGAS", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD")
 HISTORY_RATE = 5
 HISTORY_BURST = 10
 HISTORY_CONCURRENCY = 2

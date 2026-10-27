@@ -19,10 +19,11 @@ function replaceIfChanged(node,...children){
 const $=id=>document.getElementById(id);
 const el=(tag,value,cls)=>{const n=document.createElement(tag);if(value!==undefined)n.textContent=value;if(cls)n.className=cls;return n;};
 const numeric=v=>typeof v==='number'&&Number.isFinite(v);
-const symbols=['BTC','ETH','SOL','XRP','BNB','DOGE','GOLD','SILVER','WTI','PLATINUM','PALLADIUM','COPPER','NATGAS'];
+const symbols=['BTC','ETH','SOL','XRP','BNB','DOGE','GOLD','SILVER','WTI','PLATINUM','PALLADIUM','COPPER','NATGAS','EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD'];
 const cryptoSymbols=['BTC','ETH','SOL','XRP','BNB','DOGE'];
-const commoditySymbols=symbols.filter(asset=>!cryptoSymbols.includes(asset));
-const assetName=a=>a==='WTI'?'OIL / WTI':a;
+const fxSymbols=['EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD'];
+const commoditySymbols=symbols.filter(asset=>!cryptoSymbols.includes(asset)&&!fxSymbols.includes(asset));
+const assetName=a=>a==='WTI'?'OIL / WTI':fxSymbols.includes(a)?a.slice(0,3)+'/'+a.slice(3):a;
 const coinPaths={
  PLATINUM:'M12 2 21 7v10l-9 5-9-5V7Z',
  PALLADIUM:'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z',
@@ -39,6 +40,23 @@ const coinPaths={
  WTI:'M12 2C10 8 5 10 5 15a7 7 0 0 0 14 0c0-5-5-7-7-13Z'
 };
 function coin(asset){
+  if(fxSymbols.includes(asset)){
+    const node=el('span','','coin forex '+asset.toLowerCase());
+    const marks={EUR:'€',GBP:'£',USD:'$',JPY:'¥',AUD:'A$',CAD:'C$'};
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 32 32');svg.setAttribute('aria-hidden','true');
+    for(const [currency,x,y] of [[asset.slice(0,3),11,12],[asset.slice(3),22,24]]){
+      const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      circle.setAttribute('cx',x);circle.setAttribute('cy',y-4);circle.setAttribute('r','9');
+      circle.setAttribute('fill',y===12?'var(--forex-base)':'#16382e');circle.setAttribute('stroke','#101c17');
+      const label=document.createElementNS('http://www.w3.org/2000/svg','text');
+      label.setAttribute('x',x);label.setAttribute('y',y);label.setAttribute('text-anchor','middle');
+      label.setAttribute('font-size',marks[currency].length>1?'9':'12');label.setAttribute('font-weight','700');
+      label.setAttribute('fill',y===12?'#102019':'#e6f4ed');label.textContent=marks[currency];
+      svg.append(circle,label);
+    }
+    node.append(svg);return node;
+  }
   const iconAsset=asset;
   if(!coinPaths[iconAsset])return el('span',asset[0],'coin '+asset.toLowerCase());
   const node=el('span','','coin '+asset.toLowerCase()),svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),path=document.createElementNS('http://www.w3.org/2000/svg','path');
@@ -114,7 +132,7 @@ function renderDailyMarkets(){
  $('daily-market-records').hidden=source==='example';if(source==='example')return;
  const daily=dailyMarketStats(),rows=[],included=includedAssets();
  $('daily-market-date').textContent=dateLabel(selectedDay)+' · '+$('calendar-asset').selectedOptions[0].text+' · After recorded fees';
- for(const [label,assets] of [['Digital assets',cryptoSymbols],['Commodities',commoditySymbols]]){
+ for(const [label,assets] of [['Digital assets',cryptoSymbols],['Commodities',commoditySymbols],['Forex',fxSymbols]]){
   const group=assets.filter(a=>included.includes(a));if(!group.length)continue;
   const heading=el('tr','','group-row'),cell=el('td',label.toUpperCase());cell.colSpan=7;heading.append(cell);rows.push(heading);
   group.sort((a,b)=>(daily[b]?.realized_pnl??-Infinity)-(daily[a]?.realized_pnl??-Infinity));
@@ -124,7 +142,7 @@ function renderDailyMarkets(){
  }
  replaceIfChanged($('daily-market-rows'),...rows);
  const totals=[];
- for(const [name,members] of [['CRYPTO TOTAL',cryptoSymbols],['COMMODITIES TOTAL',commoditySymbols],['TOTAL',included]]){
+ for(const [name,members] of [['CRYPTO TOTAL',cryptoSymbols],['COMMODITIES TOTAL',commoditySymbols],['FOREX TOTAL',fxSymbols],['TOTAL',included]]){
   const selected=members.filter(a=>included.includes(a));if(!selected.length)continue;
   const total={};for(const key of ['realized_pnl','completed_trades','wins','losses'])total[key]=selected.every(a=>numeric(daily[a]?.[key]))?selected.reduce((n,a)=>n+daily[a][key],0):null;
   total.session_pending=selected.some(a=>daily[a]?.session_pending);
@@ -173,7 +191,7 @@ async function refreshPerformance(){
 }
 function csvFor(kind){const rows=[['Date','Net P&L (USD)','Completed trades','Scope','Source']];for(const day of periodDates(kind)){const stats=dayStats(day);rows.push([day,numeric(stats.pnl)?stats.pnl:'',stats.trades??'',source==='example'?'Example':assetFilter,source]);}return rows.map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\r\n');}
 function exportCSV(kind){const blob=new Blob([csvFor(kind)],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=el('a');link.href=url;link.download=`project15-${source}-${kind}-${anchor}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-const lineColors=['#f3f4f6','#ff8a3d','#a78bfa','#34d399','#38bdf8','#6385ff','#e879f9','#a3e635','#fff176','#94a3b8','#fb7185','#cbd5e1','#c4b5fd','#e7a06f','#67e8f9'];
+const lineColors=['#f3f4f6','#ff8a3d','#a78bfa','#34d399','#38bdf8','#6385ff','#e879f9','#a3e635','#fff176','#94a3b8','#fb7185','#cbd5e1','#c4b5fd','#e7a06f','#67e8f9','#f472b6','#2dd4bf','#fbbf24','#60a5fa'];
 let intradayData=null,intradayBusy=false,intradaySignature='',inspectedTime=null,plotGeometry=null;
 const hiddenLines=new Set();
 function svgNode(tag,attrs,text){const node=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [key,value] of Object.entries(attrs))node.setAttribute(key,value);if(text!==undefined)node.textContent=text;return node;}

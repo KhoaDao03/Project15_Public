@@ -24,15 +24,16 @@ updateTabIcon();
 const el=(tag,value,cls)=>{const node=document.createElement(tag);node.textContent=value??'—';if(cls)node.className=cls;return node;};
 const numeric=value=>typeof value==='number'&&Number.isFinite(value);
 const money=value=>numeric(value)?new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:4}).format(value):'—';
-const referenceMoney=(value,asset)=>['DOGE','COPPER','NATGAS'].includes(asset)&&numeric(value)?'$'+value.toFixed(asset==='DOGE'?7:5):money(value);
+const referenceMoney=(value,asset)=>numeric(value)&&['EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD'].includes(asset)?value.toFixed(asset==='USDJPY'?3:5):['DOGE','COPPER','NATGAS'].includes(asset)&&numeric(value)?'$'+value.toFixed(asset==='DOGE'?7:5):money(value);
 const signedMoney=value=>numeric(value)?(value>0?'+':'')+money(value):'—';
 const pnlClass=value=>value>0?'positive':value<0?'negative':'';
 const percent=value=>numeric(value)?(value*100).toFixed(1)+'%':'—';
 const count=value=>numeric(value)?value.toLocaleString('en-US'):'—';
 const cryptoSymbols=['BTC','ETH','SOL','XRP','BNB','DOGE'];
 const commoditySymbols=['GOLD','SILVER','WTI','PLATINUM','PALLADIUM','COPPER','NATGAS'];
-const symbols=[...cryptoSymbols,...commoditySymbols];
-const names=asset=>asset==='WTI'?'OIL / WTI':asset;
+const fxSymbols=['EURUSD','GBPUSD','USDJPY','AUDUSD','USDCAD'];
+const symbols=[...cryptoSymbols,...commoditySymbols,...fxSymbols];
+const names=asset=>asset==='WTI'?'OIL / WTI':fxSymbols.includes(asset)?asset.slice(0,3)+'/'+asset.slice(3):asset;
 const coinPaths={
  PLATINUM:'M12 2 21 7v10l-9 5-9-5V7Z',
  PALLADIUM:'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z',
@@ -51,6 +52,23 @@ const coinPaths={
 let latest=null;
 let selected='BTC',historyMode=false,historyOffset=0,historyTotal=0,historyBusy=false,historyRequest=0;
 function coin(asset){
+  if(fxSymbols.includes(asset)){
+    const node=el('span','','coin forex '+asset.toLowerCase());
+    const marks={EUR:'€',GBP:'£',USD:'$',JPY:'¥',AUD:'A$',CAD:'C$'};
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 32 32');svg.setAttribute('aria-hidden','true');
+    for(const [currency,x,y] of [[asset.slice(0,3),11,12],[asset.slice(3),22,24]]){
+      const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      circle.setAttribute('cx',x);circle.setAttribute('cy',y-4);circle.setAttribute('r','9');
+      circle.setAttribute('fill',y===12?'var(--forex-base)':'#16382e');circle.setAttribute('stroke','#101c17');
+      const label=document.createElementNS('http://www.w3.org/2000/svg','text');
+      label.setAttribute('x',x);label.setAttribute('y',y);label.setAttribute('text-anchor','middle');
+      label.setAttribute('font-size',marks[currency].length>1?'9':'12');label.setAttribute('font-weight','700');
+      label.setAttribute('fill',y===12?'#102019':'#e6f4ed');label.textContent=marks[currency];
+      svg.append(circle,label);
+    }
+    node.append(svg);return node;
+  }
   const iconAsset=asset;
   if(!coinPaths[iconAsset])return el('span',asset[0],'coin '+asset.toLowerCase());
   const node=el('span','','coin '+asset.toLowerCase()),svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),path=document.createElementNS('http://www.w3.org/2000/svg','path');
@@ -169,13 +187,13 @@ function renderContent(data){
   const metrics=[['$','Realized P&L',signedMoney(total.realized_pnl),(data.live_only?'Live · ':'')+'After recorded fees'+(partial?' · partial':''),pnlClass(total.realized_pnl)],['▤','Completed trades',count(total.completed_trades),recordScope==='today'?'Closed today':'Recorded history'],['♜','Wins / losses',count(total.wins)+' / '+count(total.losses),'Completed trades'],['◎','Overall win rate',percent(total.win_rate),'Weighted by completed trades'],['▤','Open trades',count(total.open_positions),'Current snapshot'],['♛','Top market by P&L',top.length===1?top[0].asset:'—',top.length===1?signedMoney(top[0].realized_pnl):top.length>1?'Tied for first place':'No ranked history']];
   replaceIfChanged($('summary'),...metrics.map(([icon,label,value,note,cls])=>{const metric=el('div','','metric'),text=el('div','');text.append(el('small',label),el('strong',value,cls),el('small',note));metric.append(el('span',icon,'metric-icon'),text);return metric;}));
   const rows=[];
-  for(const [label,group] of [['Digital assets',records.filter(a=>cryptoSymbols.includes(a.asset))],['Commodities',records.filter(a=>commoditySymbols.includes(a.asset))]]){
+  for(const [label,group] of [['Digital assets',records.filter(a=>cryptoSymbols.includes(a.asset))],['Commodities',records.filter(a=>commoditySymbols.includes(a.asset))],['Forex',records.filter(a=>fxSymbols.includes(a.asset))]]){
     const heading=el('tr','','group-row'),cell=el('td',label.toUpperCase());cell.colSpan=10;heading.append(cell);rows.push(heading);
     group.sort((a,b)=>(numeric(b.realized_pnl)?b.realized_pnl:-Infinity)-(numeric(a.realized_pnl)?a.realized_pnl:-Infinity));
     for(const a of group){const row=el('tr','',[selected===a.asset?'selected':'',openTradeHighlight(data,a),liveBuyingStatus(data,a)[0]==='OFF'?'trading-off':''].filter(Boolean).join(' ')),market=el('td','');market.append(marketButton(a.asset));const rank=numeric(a.realized_pnl)?1+records.filter(b=>numeric(b.realized_pnl)&&b.realized_pnl>a.realized_pnl).length:'—';row.append(el('td',rank),market);performanceCells(row,a);row.addEventListener('click',event=>{if(!event.target.closest('button'))selectMarket(a.asset);});rows.push(row);}
   }
   replaceIfChanged($('comparison'),...rows);
-  const totals=el('tr','',records.some(a=>a.open_positions>0)||total.session_pending?'has-open-trade':''),label=el('td','TOTAL ('+symbols.length+' markets)');label.colSpan=2;totals.append(label);performanceCells(totals,total);const subtotals=[['CRYPTO TOTAL',cryptoSymbols],['COMMODITIES TOTAL',commoditySymbols]].map(([name,members])=>{const values=summarize(records.filter(a=>members.includes(a.asset)),members.length),row=el('tr','',records.some(a=>members.includes(a.asset)&&a.open_positions>0)||values.session_pending?'has-open-trade':''),cell=el('td',name);cell.colSpan=2;row.append(cell);performanceCells(row,values);return row;});replaceIfChanged($('totals'),...subtotals,totals);
+  const totals=el('tr','',records.some(a=>a.open_positions>0)||total.session_pending?'has-open-trade':''),label=el('td','TOTAL ('+symbols.length+' markets)');label.colSpan=2;totals.append(label);performanceCells(totals,total);const subtotals=[['CRYPTO TOTAL',cryptoSymbols],['COMMODITIES TOTAL',commoditySymbols],['FOREX TOTAL',fxSymbols]].map(([name,members])=>{const values=summarize(records.filter(a=>members.includes(a.asset)),members.length),row=el('tr','',records.some(a=>members.includes(a.asset)&&a.open_positions>0)||values.session_pending?'has-open-trade':''),cell=el('td',name);cell.colSpan=2;row.append(cell);performanceCells(row,values);return row;});replaceIfChanged($('totals'),...subtotals,totals);
   $('insight').textContent=(top.length===1?(top[0].asset+' leads all markets by recorded realized P&L. '):top.length>1?'Multiple markets are tied for first place. ':'Market ranking requires available completed history for all markets. ')+(partial?'Some totals are unavailable or partial. ':'')+'Latest session Δ P&L covers the last completed 15-minute contract, or an early realized crypto loss in the current contract; no trade shows $0 and unsettled trades show Pending. These are recorded trade results, not underlying market-price returns.';
   replaceIfChanged($('market-status'),...assets.map(a=>{const row=el('tr','',[selected===a.asset?'selected':'',openTradeHighlight(data,a),liveBuyingStatus(data,a)[0]==='OFF'?'trading-off':''].filter(Boolean).join(' ')),market=el('td',''),price=el('td',referenceMoney(a.price,a.asset)),status=el('td',''),buying=el('td','');market.append(marketButton(a.asset));if(!a.markets?.length||a.markets.some(m=>!m.fresh))price.append(el('small','⚠ Stale market data','stale'));status.append(statusBadge(data,a));buying.append(buyingBadge(data,a));const probability=el('td','');probability.append(entryConfidenceView(data,a));row.append(market,price,probability,status,buying);row.addEventListener('click',event=>{if(!event.target.closest('button'))selectMarket(a.asset);});return row;}));
   const asset=assets.find(a=>a.asset===selected);$('detail-title').textContent=names(selected)+' / Market detail';$('detail-icon').replaceWith(Object.assign(coin(selected),{id:'detail-icon'}));

@@ -117,3 +117,6 @@ table .market-button{margin-inline:auto;justify-content:center}
 
 @media(max-width:480px){.market-grid>.panel{min-height:850px}}
 @media(min-width:801px) and (max-width:1100px){.market-grid>.panel{min-height:835px}}
+
+.coin.forex{background:transparent;--forex-base:#8cbaff}.coin.forex svg{width:30px;height:30px}
+.coin.gbpusd{--forex-base:#c4a5f5}.coin.usdjpy{--forex-base:#f6a1a8}.coin.audusd{--forex-base:#e9cf79}.coin.usdcad{--forex-base:#8dd4b9}
