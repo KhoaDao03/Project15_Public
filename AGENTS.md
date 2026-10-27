@@ -8,6 +8,17 @@ Read `README.md` before making changes. Inspect the actual host and service conf
 
 ## Handoff state
 
+Receiver setup verified on 2026-10-26 (America/New_York):
+
+- On the Public UI host `oracle` (expected public address `147.224.164.255`), SSH listens on port 22. The interface uses private address `10.0.0.45`; public routing still requires the sender's connection test.
+- Created `public-sync` with `/home/public-sync` and `/bin/bash`. Installed the supplied public transfer key with source restriction `108.175.13.244` and forced command `/usr/bin/rrsync -wo -no-del /var/lib/project15-public`. Password authentication is disabled by existing SSH policy. Existing firewall and SSH daemon configuration were preserved.
+- Data directory ownership/mode is `public-sync:public-web`, `2750`. Added `ubuntu` to `public-web` for preview read access; newly launched processes must acquire that group. Both `ubuntu` and `public-web` were checked to have directory read/traverse access without write access.
+- Original directory/account state and rollback notes are in `/var/backups/project15-receiver-20261027T023953Z/original-state.json`.
+- No preview process or managed public-site service was running at initial inspection. The checkout remains `/home/ubuntu/Project15_Public`; existing untracked `.venv/` and `PREVIEW_UPDATES.md` were preserved.
+- First transfer verified: SSH logs accepted the supplied key from `108.175.13.244`; all 16 expected JSON files parsed as both `ubuntu` and `public-web`, with ownership `public-sync:public-web`, mode `0640`, and no file write access for either website account. The user relayed the Bot VPS agent's confirmation that automatic `project15-public-sync` is enabled and active as `public-push`; the receiving-side session did not modify or independently inspect that service.
+- Started the temporary preview as `ubuntu` with fresh supplementary groups, `PROJECT15_PUBLIC_DATA_DIR=/var/lib/project15-public`, and `127.0.0.1:8080`. It remains an unmanaged preview, not a boot-persistent systemd service. Both pages and all four data APIs returned HTTP 200, including intraday for New York date `2026-10-26`. Performance/intraday reported no missing assets and `stale: false`; BTC history reported 600 rows. Snapshot timestamps advanced from `2026-10-26T22:44:30-04:00` to `2026-10-26T22:44:37-04:00`. Private/control routes returned 404 and POST to `/api/view` returned 405. Browser rendering was not manually tested during this setup.
+- No Bot VPS, DNS, trading, or old public website changes were performed.
+
 At extraction:
 
 - The public server, frontend, dependency pins, service template, and Caddy example were copied from Project15 into this repository.
