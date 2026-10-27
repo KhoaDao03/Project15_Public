@@ -18,6 +18,8 @@ and the Forex table after deployment. The bot VPS supplies the five new historie
 
 # Permanent Public UI deployment
 
+For routine updates, use [deploy-public-ui.sh](deploy-public-ui.sh). The [deployment guide](DEPLOY_GUIDE.md) includes script usage, manual steps, and rollback instructions.
+
 ## Current public status — 2026-10-27
 
 Both `dekings.org` and `www.dekings.org` resolve to `147.224.164.255` in the checked public resolver (`www` is a CNAME to the apex). The prepared HTTPS configuration is now active in `/etc/caddy/Caddyfile`. Caddy obtained certificates for both names; HTTPS requests pinned to the new VPS returned HTTP 200 with certificate verification successful. External certificate-authority HTTP challenge requests reached this VPS. Host TCP 80/443 rules are persisted. The earlier DNS/HTTPS preparation checklist below is historical and should not be repeated. Pre-HTTPS Caddy configuration is backed up at `/etc/caddy/Caddyfile.before-https`. The old Bot VPS website has not been retired by this session.
