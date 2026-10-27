@@ -129,11 +129,13 @@ function entryConfidenceView(data,asset,detail=false){
 }
 function sitoutSchedule(asset){
   // Match the live executor: commodities are exempt.
-  if(!['BTC','ETH','SOL','XRP','BNB','DOGE'].includes(asset))return null;
+  if(!cryptoSymbols.includes(asset)&&!fxSymbols.includes(asset))return null;
   const section=el('section','','streaks sitout-schedule');
   section.setAttribute('aria-label','Entry sit-out windows');
   section.append(el('strong','Entry sit-out windows · ET'));
-  for(const [day,hours] of [['Monday–Friday','11:45–13:00'],['Tuesday (additional)','20:00–21:15'],['Thursday (additional)','19:45–21:00'],['Friday (additional)','07:30–08:45'],['Saturday–Sunday','11:15–12:30']]){
+  const windows=fxSymbols.includes(asset)?(['EURUSD','GBPUSD','USDJPY'].includes(asset)?[['Monday–Friday','08:00–12:00']]:[]):[['Monday–Friday','11:45–13:00'],['Tuesday (additional)','20:00–21:15'],['Thursday (additional)','19:45–21:00'],['Friday (additional)','07:30–08:45'],['Saturday–Sunday','11:15–12:30']];
+  if(!windows.length){section.append(el('p','No scheduled sit-out windows. Other entry checks still apply.','muted'));return section;}
+  for(const [day,hours] of windows){
     const row=el('div','','streak-row');row.append(el('span',day),el('span',hours));section.append(row);
   }
   section.append(el('p','Eastern Time (New York); daylight saving adjusts automatically. No new entries during these windows. Entries may resume at the end; existing exits remain active.','muted'));
