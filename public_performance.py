@@ -54,8 +54,9 @@ def session_stats(rows, asset, as_of, include_early_loss=False):
     def trades_at(timestamp):
         local = datetime.fromtimestamp(timestamp, ZoneInfo(TIMEZONE))
         month = ('JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC')[local.month-1]
-        ticker = f"KX{asset}15M-{local:%y}{month}{local:%d%H%M}-{local:%M}"
-        return rows.get(ticker, [])
+        prefix = f"KX{asset}15M-{local:%y}{month}{local:%d%H%M}-"
+        return [row for ticker, trades in rows.items() if isinstance(ticker, str) and ticker.startswith(prefix)
+                for row in trades]
     matches = trades_at(close)
     early = False
     if include_early_loss and asset in ('BTC','ETH','SOL','XRP','BNB','DOGE'):
