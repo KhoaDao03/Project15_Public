@@ -86,7 +86,8 @@ let tradeAsset='BTC',tradeBasis='closed',offset=0,totalTrades=0,tradesBusy=false
 const theme=matchMedia('(prefers-color-scheme: dark)');
 function updateIcon(){$('tab-icon').href=theme.matches?'/logo.svg':'/section-logo.svg';}theme.addEventListener('change',updateIcon);updateIcon();
 function includedAssets(){return assetFilter==='all'?symbols:assetFilter==='crypto'?cryptoSymbols:assetFilter==='commodities'?commoditySymbols:[assetFilter];}
-function aggregate(assets){const values=includedAssets().map(a=>assets?.[a]);return {pnl:values.every(a=>numeric(a?.realized_pnl))?values.reduce((s,a)=>s+a.realized_pnl,0):null,trades:values.every(a=>numeric(a?.completed_trades))?values.reduce((s,a)=>s+a.completed_trades,0):null};}
+function availableSum(values){const known=values.filter(numeric);return known.length?known.reduce((a,b)=>a+b,0):null;}
+function aggregate(assets){const values=includedAssets().map(a=>assets?.[a]);return {pnl:availableSum(values.map(a=>a?.realized_pnl)),trades:availableSum(values.map(a=>a?.completed_trades)),partial:values.some(a=>!numeric(a?.realized_pnl))};}
 function dayStats(day){
  if(source==='example')return exampleDays[day]||{pnl:0,trades:0};
  const record=performanceData?.days.find(d=>d.date===day);
@@ -104,7 +105,7 @@ function renderCalendar(){
  const days=periodDates(),values=days.map(dayStats),available=source==='example'||days.some(d=>performanceData?.days.some(r=>r.date===d));
  const complete=available&&values.every((v,i)=>numeric(v.pnl)||!performanceData?.days.some(r=>r.date===days[i]));
  const pnl=complete?values.reduce((s,v)=>s+(v.pnl||0),0):null,trades=values.every(v=>numeric(v.trades))?values.reduce((s,v)=>s+v.trades,0):null;
- $('period-summary').textContent=(source==='example'?'Example · ':assetFilter==='all'?'All markets · ':$('calendar-asset').selectedOptions[0].text+' · ')+signed(pnl)+' net · '+(trades??'—')+' closed trades';
+ $('period-summary').textContent=(source==='example'?'Example · ':assetFilter==='all'?'All markets · ':$('calendar-asset').selectedOptions[0].text+' · ')+signed(pnl)+' net · '+(trades??'—')+' closed trades'+(values.some(v=>v.partial)?' · available markets only':'');
  const cells=[];
  for(let i=0;i<length;i++){
   const day=shiftDay(start,i),stats=dayStats(day),active=day===selectedDay;
@@ -144,17 +145,18 @@ function renderDailyMarkets(){
  const totals=[];
  for(const [name,members] of [['CRYPTO TOTAL',cryptoSymbols],['COMMODITIES TOTAL',commoditySymbols],['FOREX TOTAL',fxSymbols],['TOTAL',included]]){
   const selected=members.filter(a=>included.includes(a));if(!selected.length)continue;
-  const total={};for(const key of ['realized_pnl','completed_trades','wins','losses'])total[key]=selected.every(a=>numeric(daily[a]?.[key]))?selected.reduce((n,a)=>n+daily[a][key],0):null;
+  const total={};for(const key of ['realized_pnl','completed_trades','wins','losses'])total[key]=availableSum(selected.map(a=>daily[a]?.[key]));
   total.session_pending=selected.some(a=>daily[a]?.session_pending);
-  total.win_rate=total.completed_trades>0&&numeric(total.wins)&&selected.every(a=>daily[a]?.unknown_pnl===0)?total.wins/total.completed_trades:null;
-  const row=el('tr','',total.session_pending?'has-open-trade':''),label=el('td',name);label.colSpan=2;row.append(label);dailyCells(row,total);totals.push(row);
+  const rated=selected.map(a=>daily[a]).filter(a=>numeric(a?.wins)&&numeric(a?.completed_trades)&&a?.unknown_pnl===0),completed=rated.reduce((n,a)=>n+a.completed_trades,0);
+  total.win_rate=completed>0?rated.reduce((n,a)=>n+a.wins,0)/completed:null;
+  const row=el('tr','',total.session_pending?'has-open-trade':''),label=el('td',name+(selected.some(a=>!numeric(daily[a]?.realized_pnl))?' · available':''));label.colSpan=2;row.append(label);dailyCells(row,total);totals.push(row);
  }
  replaceIfChanged($('daily-market-totals'),...totals);
 }
 function render(){preserveNavigation(()=>{
  const demo=source==='example';$('example-notice').hidden=!demo;$('example-detail').hidden=!demo;$('recorded-trades').hidden=demo;$('calendar-asset').disabled=demo;$('edit-example').disabled=!demo;
  const all=performanceData?aggregate(performanceData.all_time):{pnl:null,trades:null};
- replaceIfChanged($('all-time-summary'),metric('Recorded realized P&L',signed(all.pnl),pnlClass(all.pnl)),metric('Completed trades',all.trades??'—'),metric('Scope',assetFilter==='all'?'All markets':$('calendar-asset').selectedOptions[0].text));
+ replaceIfChanged($('all-time-summary'),metric('Recorded realized P&L'+(all.partial?' · available':''),signed(all.pnl),pnlClass(all.pnl)),metric('Completed trades',all.trades??'—'),metric('Scope',assetFilter==='all'?'All markets':$('calendar-asset').selectedOptions[0].text));
  renderDailyMarkets();$('day-trades-title').textContent=assetName(tradeAsset)+' · Trade records';replaceIfChanged($('day-trades-icon'),coin(tradeAsset));
  renderIntraday();renderCalendar();const stats=dayStats(selectedDay);$('day-title').textContent=dateLabel(selectedDay);
  $('day-note').textContent=demo?'Example daily result':(selectedDay===performanceData?.today?'Today · In progress · ':'')+(stats.trades===0?'No recorded closed trades for this date.':'Realized results · '+$('calendar-asset').selectedOptions[0].text)+' · America/New_York';
@@ -184,7 +186,7 @@ async function refreshPerformance(){
  try{const response=await fetch('/api/performance',{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('Performance history is temporarily unavailable. Retrying automatically.');const data=await response.json();performanceData=data;
  if(!initialized&&source==='recorded'){selectedDay=anchor=data.today;initialized=true;}
  $('connection').textContent=data.stale?'History delayed':'History connected';$('connection').className=data.stale?'stale':'';$('updated').textContent=timestamp(data.generated_at);
- $('performance-message').textContent=[data.stale?'History updates delayed; showing last available records.':'',data.missing_assets?.length?'Incomplete history: '+data.missing_assets.join(', ')+'. Affected totals are unavailable.':'',Object.values(data.all_time||{}).some(a=>a.unknown_pnl>0)?'Some completed trades have unknown P&L. Affected totals are unavailable.':'',data.excluded_undated_trades?data.excluded_undated_trades+' trades have no closure date and are excluded from the calendar.':''].filter(Boolean).join(' ');
+ $('performance-message').textContent=[data.stale?'History updates delayed; showing last available records.':'',data.missing_assets?.length?'Incomplete history: '+data.missing_assets.join(', ')+'. Totals include available markets only.':'',Object.values(data.all_time||{}).some(a=>a.unknown_pnl>0)?'Some completed trades have unknown P&L. Markets with unavailable P&L are excluded from totals.':'',data.excluded_undated_trades?data.excluded_undated_trades+' trades have no closure date and are excluded from the calendar.':''].filter(Boolean).join(' ');
  render();loadIntraday();await loadTrades(true);
  }catch(error){$('performance-message').textContent=error.message+(performanceData?' Previously loaded results may be out of date.':'');$('connection').textContent='History unavailable';$('connection').className='stale';}
  finally{performanceBusy=false;}
@@ -199,8 +201,8 @@ function atTime(points,time){let low=0,high=points.length;while(low<high){const 
 function chartSeries(){
  if(!intradayData)return [];
  const assets=includedAssets(),times=[...new Set(assets.flatMap(a=>(intradayData.assets[a]||[]).map(p=>p.timestamp)))].sort((a,b)=>a-b);
- const total=times.map(timestamp=>{const values=assets.map(a=>atTime(intradayData.assets[a]||[],timestamp));return {timestamp,pnl:values.every(numeric)?values.reduce((a,b)=>a+b,0):null};});
- return [{key:'TOTAL',label:'Total',color:lineColors[0],points:total},...assets.map(a=>({key:a,label:assetName(a),color:lineColors[symbols.indexOf(a)+1],points:intradayData.assets[a]||[]}))];
+ const total=times.map(timestamp=>{const values=assets.map(a=>atTime(intradayData.assets[a]||[],timestamp));return {timestamp,pnl:availableSum(values)};});
+ return [{key:'TOTAL',label:assets.some(a=>(intradayData.assets[a]||[]).some(p=>!numeric(p.pnl))||!intradayData.assets[a]?.length)?'Total · available':'Total',color:lineColors[0],points:total},...assets.map(a=>({key:a,label:assetName(a),color:lineColors[symbols.indexOf(a)+1],points:intradayData.assets[a]||[]}))];
 }
 function intradayTimeLabel(time,detail=false){return new Date(time*1000).toLocaleTimeString('en-US',{timeZone:zone,hour:'2-digit',minute:'2-digit',hourCycle:'h23',...(detail?{second:'2-digit',timeZoneName:'short'}:{})});}
 function inspectChart(time){
