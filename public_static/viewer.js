@@ -93,7 +93,7 @@ function summarize(assets,expectedCount=symbols.length){
 function leaders(assets){if(assets.length!==symbols.length||assets.some(a=>!numeric(a.realized_pnl)||!numeric(a.completed_trades))||!assets.some(a=>a.completed_trades>0))return [];const best=Math.max(...assets.map(a=>a.realized_pnl));return assets.filter(a=>a.realized_pnl===best);}
 function openTradeHighlight(data,asset){
   if(!numeric(asset.open_positions)||asset.open_positions<=0)return '';
-  const opposed=commoditySymbols.includes(asset.asset)&&!data.stale&&!asset.trades_stale&&(asset.trades||[]).some(trade=>{
+  const opposed=(commoditySymbols.includes(asset.asset)||fxSymbols.includes(asset.asset))&&!data.stale&&!asset.trades_stale&&(asset.trades||[]).some(trade=>{
     if(trade.status!=='OPEN'||!['yes','no'].includes(trade.side))return false;
     const market=(asset.markets||[]).find(m=>m.ticker===trade.market),p=market?.fresh&&market.probability?.available?market.probability:trade.last_model_probability;
     if(p?.available!==true||!numeric(p.p_yes)||!numeric(p.p_no)||p.p_yes<0||p.p_yes>1||p.p_no<0||p.p_no>1)return false;
