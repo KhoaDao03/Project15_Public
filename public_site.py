@@ -254,11 +254,12 @@ def create_app(data_dir=None):
         html = html.replace("Project15 · ", "Project15 · 1-contract · ", 1)
         html = html.replace("<h1>", "<h1>Normalized ", 1)
         notice = ('<aside class="normalization-notice" aria-label="Calculation basis">'
-                  '<strong>1-contract normalized results</strong>'
+                  '<strong>Paper Trading with 1 contract</strong>'
                   '<p>Each recorded trade is scaled to one originally bought contract. '
                   'Net P&amp;L and recorded fees are divided by contracts bought. '
                   'Entry/exit prices, timing, and trade counts stay the same. '
-                  'This is a sizing comparison, not actual returns or a paper-trading simulation. '
+                  'These hypothetical results reuse recorded trades; they are not actual returns '
+                  'or an independently executed paper-trading simulation. '
                   'Missing sizes remain unavailable; fees are proportional estimates. '
                   'Live status and open-trade counts describe the actual bot.</p></aside>')
         return HTMLResponse(html.replace("<main>", "<main>" + notice, 1))

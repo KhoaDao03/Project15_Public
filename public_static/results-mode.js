@@ -15,7 +15,7 @@ if (normalizedView) {
   const source = document.getElementById('data-source');
   if (source) {
     source.querySelector('[value="example"]').remove();
-    source.querySelector('[value="recorded"]').textContent = '1-contract normalized';
+    source.querySelector('[value="recorded"]').textContent = 'Paper Trading with 1 contract';
     document.getElementById('edit-example').hidden = true;
   }
 }

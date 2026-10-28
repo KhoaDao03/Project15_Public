@@ -171,7 +171,7 @@ class ApiModeTests(unittest.IsolatedAsyncioTestCase):
             for path in ('/normalized','/normalized/performance'):
                 html = self.endpoint(path)().body.decode()
                 self.assertIn('data-results-mode="normalized"',html)
-                self.assertIn('1-contract normalized results',html)
+                self.assertIn('Paper Trading with 1 contract',html)
                 self.assertIn('/results-mode.js',html)
             self.assertEqual(scale.call_count,0)
 
