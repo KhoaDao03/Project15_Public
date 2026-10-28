@@ -8,6 +8,20 @@ Read `README.md` before making changes. Inspect the actual host and service conf
 
 ## Handoff state
 
+Normalized UI implemented in the source checkout on 2026-10-28, **not deployed
+or committed in this task**. Added `/normalized` and `/normalized/performance`
+using the existing templates and APIs with `normalized=true`. Trades scale by
+original `bought`, never remaining `quantity`; no duplicate history files or
+background normalization jobs. Separate request-driven performance caches and
+bounded intraday caches preserve actual results. README documents semantics;
+deployment script validates the new shared `results-mode.js` and normalized
+routes. Twelve isolated regression tests passed, including source-update/cache
+expiry, missing values, DST, no disk writes, and no idle normalization. Chromium
+checks at 1440px and 390px passed on all four pages: no JS errors or document
+overflow, correct API mode, filters retained across refresh, history browsing,
+and CSV downloads. Tested with the existing read-only synced data on an isolated
+localhost:8081 preview; production runtime/services, DNS, and Bot VPS unchanged.
+
 Latest application deployment on 2026-10-27: revision `b1a0a09a68eff597ed48e433029b6a23ffbb4a4a`; rollback `/var/backups/project15-app-5csxvm2_`. Deployed Forex support, partial-total presentation changes, and Forex sit-out schedules. Preserved existing local handoff edits. Python compilation and installed dependency checks passed. Both HTTPS domains returned 200 for both pages and all four APIs, with fresh data, 18 markets with history, and no missing assets. Served JS/CSS matched source bytes; service active with zero automatic restarts. Restarted only the public socket/service; Bot VPS, DNS, Caddy, and sync were unchanged. Browser interaction was not manually tested.
 
 Application update deployed on 2026-10-27: installed source revision `7203d52a55b994fad5da4656ad5da74efd73e8dd` into the permanent runtime; rollback backup `/var/backups/project15-app-vzaliuq6`. Dependencies unchanged and `pip check` passed. Restarted only the public socket/service. Both HTTPS domains returned 200 for both pages and all four APIs, with fresh data and no missing assets. Served JS/CSS matched source bytes. Supported performance markets now total 13, excluding HYPE; `/api/history/HYPE` returns 404. Runtime revision recorded in `/srv/public-web/project15/DEPLOYED_REVISION`. No DNS, Caddy, Bot VPS, or data-sync changes were made.

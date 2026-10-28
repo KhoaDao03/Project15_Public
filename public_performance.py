@@ -7,6 +7,29 @@ from zoneinfo import ZoneInfo
 TIMEZONE = "America/New_York"
 
 
+def normalize_trade(row):
+    """One original contract per recorded trade, without mutating source rows.
+
+    `quantity` is remaining inventory (normally zero after closing); only
+    `bought` is a valid denominator. Fees are allocated proportionally, not
+    simulated with a different exchange fee/rounding schedule.
+    """
+    result = dict(row)
+    size = row.get("bought")
+    valid = type(size) in (int, float) and math.isfinite(size) and size > 0
+
+    def scaled(value):
+        if not valid or type(value) not in (int, float) or not math.isfinite(value):
+            return None
+        value = value / size
+        return value if math.isfinite(value) else None
+
+    result.update(bought=1 if valid else None, quantity=scaled(row.get("quantity")),
+                  fees=scaled(row.get("fees")), net_pnl=scaled(row.get("net_pnl")),
+                  normalization_available=valid)
+    return result
+
+
 def trade_day(value):
     if type(value) not in (int, float) or not math.isfinite(value):
         return None

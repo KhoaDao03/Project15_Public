@@ -18,6 +18,47 @@ AI agents working on the Website VPS must read [AGENTS.md](AGENTS.md) first. It 
 
 Both pages use the Project15 theme. Supported markets are BTC, ETH, SOL, XRP, BNB, DOGE, GOLD, SILVER, WTI (displayed as OIL / WTI), PLATINUM, PALLADIUM, COPPER, NATGAS (natural gas), EUR/USD, GBP/USD, USD/JPY, AUD/USD and USD/CAD.
 
+## One-contract normalized views
+
+`/normalized` is the normalized market dashboard; `/normalized/performance` is
+its performance calendar, daily records, intraday chart, and CSV export. The
+original `/` and `/performance` continue to show actual recorded amounts.
+
+Each trade contributes `net_pnl / bought` and `fees / bought`, using its original
+contracts bought, not its remaining `quantity` (which is normally zero after
+closing). For example, a $2 profit on 10 contracts contributes $0.20; a $10 loss
+on 100 contracts contributes -$0.10. Together they contribute $0.10. Entry/exit
+prices and timestamps are unchanged. Each valid trade has normalized bought
+size 1; remaining inventory is `quantity / bought`. Open positions are excluded
+from realized performance, including partially closed positions still marked
+OPEN. Missing or invalid sizes/P&L stay unavailable. Fees are proportionally
+allocated recorded fees, not a simulation of exchange fee rounding for a new
+one-contract order. Live status, quotes, and open-trade counts describe the
+actual bot; this is a sizing comparison, not a separate trading strategy.
+
+Both pairs read the **same existing sanitized JSON files**. No normalized trade
+files, database, exporter, sync job, or background calculations are created.
+Normalization runs only when a normalized API is requested. Performance results
+have separate two-second in-memory caches per mode; intraday results share a
+bounded two-entry cache keyed by date and mode. Browser polling follows the
+existing automatic refresh behavior and retains the current selection. With no
+normalized visitors/API requests, a second VPS does no normalization work.
+Existing sync and ordinary website costs still apply. Cached responses may
+remain in process memory until replaced or the service restarts.
+
+All four data APIs accept `normalized=true`, for example
+`/api/intraday?day=2026-10-28&normalized=true`. Omitting it preserves actual
+results. Normalized CSV files identify their basis and preserve negative signs.
+Deploy both Python modules and the full static directory together, including
+`results-mode.js`, using [deploy-public-ui.sh](deploy-public-ui.sh). Pulling code
+alone does not replace this VPS's installed runtime; follow [DEPLOYMENT.md](DEPLOYMENT.md).
+
+Run isolated regression tests (temporary synthetic data; no production writes):
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -v
+```
+
 ## Repository contents
 
 | Path | Purpose |

@@ -67,7 +67,7 @@ function coin(asset){
   node.append(svg);return node;
 }
 const zone='America/New_York';
-const money=v=>numeric(v)?new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(v):'—';
+const money=v=>numeric(v)?new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:normalizedView?4:2}).format(v):'—';
 const signed=v=>numeric(v)?(v>0?'+':'')+money(v):'—';
 const pnlClass=v=>v>0?'positive':v<0?'negative':'';
 const dateObject=d=>new Date(d+'T12:00:00Z');
@@ -96,7 +96,7 @@ function dayStats(day){
 }
 function periodDates(kind=view){const start=kind==='week'?weekStart(anchor):monthStart(anchor),end=kind==='week'?shiftDay(start,7):shiftMonth(start,1),days=[];for(let d=start;d<end;d=shiftDay(d,1))days.push(d);return days;}
 function metric(label,value,cls=''){const n=el('div','','pnl-stat');n.append(el('small',label),el('strong',value,cls));return n;}
-function cellAmount(v){if(!numeric(v))return '—';const amount=$('signed-losses').checked?v:Math.abs(v);return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:Math.abs(amount)>=1000?0:2,notation:Math.abs(amount)>=100000?'compact':'standard'}).format(amount);}
+function cellAmount(v){if(!numeric(v))return '—';const amount=$('signed-losses').checked?v:Math.abs(v);return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:Math.abs(amount)>=1000?0:normalizedView?4:2,notation:Math.abs(amount)>=100000?'compact':'standard'}).format(amount);}
 function renderCalendar(){
  const month=monthStart(anchor),start=view==='month'?weekStart(month):weekStart(anchor),length=view==='month'?42:7;
  $('month-title').textContent=view==='month'?dateObject(month).toLocaleDateString('en-US',{timeZone:'UTC',month:'long',year:'numeric'}):dateLabel(start)+' – '+dateLabel(shiftDay(start,6));
@@ -170,10 +170,10 @@ async function loadTrades(background=false){
  const request=++tradeRequest,key=[selectedDay,tradeAsset,tradeBasis,offset].join(':');tradesBusy=true;
  if(key!==shownTradeKey){shownTradeKey=key;$('day-trades').replaceChildren();$('day-trades-message').textContent='Loading '+assetName(tradeAsset)+' trades…';}if(!background)pagination();
  try{
- const response=await fetch('/api/history/'+tradeAsset+'?'+new URLSearchParams({day:selectedDay,basis:tradeBasis,offset,limit:25}),{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('Trade records are temporarily unavailable. Retrying automatically.');
+ const response=await fetch(resultsURL('/api/history/'+tradeAsset+'?'+new URLSearchParams({day:selectedDay,basis:tradeBasis,offset,limit:25})),{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('Trade records are temporarily unavailable. Retrying automatically.');
  const data=await response.json();if(request!==tradeRequest||source!=='recorded')return;totalTrades=data.total;
  const rows=data.rows.map(trade=>{
- const row=el('tr'),market=el('td',trade.market,'market'),open=trade.status==='OPEN';market.append(el('small',timestamp(trade.opened??trade.timestamp)));row.append(market);
+ const row=el('tr');if(normalizedView&&trade.normalization_available===false)row.title='Original contracts bought unavailable; normalized amounts cannot be calculated.';const market=el('td',trade.market,'market'),open=trade.status==='OPEN';market.append(el('small',timestamp(trade.opened??trade.timestamp)));row.append(market);
  for(const value of [open?'OPEN':'CLOSED',trade.market_result==='yes'?'YES':trade.market_result==='no'?'NO':'Pending / unknown',(trade.side||'—').toUpperCase()+' / '+(trade.bought??trade.quantity??'—'),money(trade.entry),open?'Pending':money(trade.exit),money(trade.fees)])row.append(el('td',value));
  if(!open&&trade.exit_timestamp)row.children[5].append(el('small',(trade.exit_type==='settlement'?'Settled: ':'Sold / exit: ')+timestamp(trade.exit_timestamp)));
  row.append(el('td',open?'Pending':signed(trade.net_pnl),open?'':pnlClass(trade.net_pnl)));return row;});
@@ -183,7 +183,7 @@ async function loadTrades(background=false){
 }
 async function refreshPerformance(){
  if(performanceBusy)return;performanceBusy=true;
- try{const response=await fetch('/api/performance',{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('Performance history is temporarily unavailable. Retrying automatically.');const data=await response.json();performanceData=data;
+ try{const response=await fetch(resultsURL('/api/performance'),{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('Performance history is temporarily unavailable. Retrying automatically.');const data=await response.json();performanceData=data;
  if(!initialized&&source==='recorded'){selectedDay=anchor=data.today;initialized=true;}
  $('connection').textContent=data.stale?'History delayed':'History connected';$('connection').className=data.stale?'stale':'';$('updated').textContent=timestamp(data.generated_at);
  $('performance-message').textContent=[data.stale?'History updates delayed; showing last available records.':'',data.missing_assets?.length?'Incomplete history: '+data.missing_assets.join(', ')+'. Totals include available markets only.':'',Object.values(data.all_time||{}).some(a=>a.unknown_pnl>0)?'Some completed trades have unknown P&L. Markets with unavailable P&L are excluded from totals.':'',data.excluded_undated_trades?data.excluded_undated_trades+' trades have no closure date and are excluded from the calendar.':''].filter(Boolean).join(' ');
@@ -191,8 +191,8 @@ async function refreshPerformance(){
  }catch(error){$('performance-message').textContent=error.message+(performanceData?' Previously loaded results may be out of date.':'');$('connection').textContent='History unavailable';$('connection').className='stale';}
  finally{performanceBusy=false;}
 }
-function csvFor(kind){const rows=[['Date','Net P&L (USD)','Completed trades','Scope','Source']];for(const day of periodDates(kind)){const stats=dayStats(day);rows.push([day,numeric(stats.pnl)?stats.pnl:'',stats.trades??'',source==='example'?'Example':assetFilter,source]);}return rows.map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\r\n');}
-function exportCSV(kind){const blob=new Blob([csvFor(kind)],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=el('a');link.href=url;link.download=`project15-${source}-${kind}-${anchor}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+function csvFor(kind){const rows=[['Date','Net P&L (USD)','Completed trades','Scope','Source']];for(const day of periodDates(kind)){const stats=dayStats(day);rows.push([day,numeric(stats.pnl)?stats.pnl:'',stats.trades??'',source==='example'?'Example':assetFilter,normalizedView?'normalized-1-contract':source]);}return rows.map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\r\n');}
+function exportCSV(kind){const blob=new Blob([csvFor(kind)],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=el('a');link.href=url;link.download=`project15-${normalizedView?'normalized-1-contract':source}-${kind}-${anchor}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 const lineColors=['#f3f4f6','#ff8a3d','#a78bfa','#34d399','#38bdf8','#6385ff','#e879f9','#a3e635','#fff176','#94a3b8','#fb7185','#cbd5e1','#c4b5fd','#e7a06f','#67e8f9','#f472b6','#2dd4bf','#fbbf24','#60a5fa'];
 let intradayData=null,intradayBusy=false,intradaySignature='',inspectedTime=null,plotGeometry=null;
 const hiddenLines=new Set();
@@ -246,7 +246,7 @@ async function loadIntraday(){
  if(source!=='recorded')return;
  const day=selectedDay;if(intradayBusy)return;
  intradayBusy=true;
- try{const response=await fetch('/api/intraday?'+new URLSearchParams({day}),{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('Intraday results temporarily unavailable. Retrying automatically.');const data=await response.json();if(day!==selectedDay||source!=='recorded')return;if(intradayData?.day!==day)inspectedTime=null;intradayData=data;preserveNavigation(renderIntraday);}
+ try{const response=await fetch(resultsURL('/api/intraday?'+new URLSearchParams({day})),{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('Intraday results temporarily unavailable. Retrying automatically.');const data=await response.json();if(day!==selectedDay||source!=='recorded')return;if(intradayData?.day!==day)inspectedTime=null;intradayData=data;preserveNavigation(renderIntraday);}
  catch(error){if(day===selectedDay&&source==='recorded')$('intraday-message').textContent=error.message+(intradayData?.day===day?' Last available chart retained.':'');}
  finally{intradayBusy=false;if(source==='recorded'&&day!==selectedDay)loadIntraday();}
 }

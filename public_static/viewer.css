@@ -120,3 +120,10 @@ table .market-button{margin-inline:auto;justify-content:center}
 
 .coin.forex{background:transparent;--forex-base:#8cbaff}.coin.forex svg{width:30px;height:30px}
 .coin.gbpusd{--forex-base:#c4a5f5}.coin.usdjpy{--forex-base:#f6a1a8}.coin.audusd{--forex-base:#e9cf79}.coin.usdcad{--forex-base:#8dd4b9}
+
+/* Both page pairs retain the established Project15 theme. */
+.public-nav{flex-wrap:wrap;row-gap:12px}
+.normalization-notice{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:14px 18px;margin-bottom:20px;background:var(--panel)}
+.normalization-notice strong{color:var(--accent)}
+.normalization-notice p{color:var(--muted);font-size:13px;line-height:1.6;margin:6px 0 0}
+@media(max-width:480px){.public-nav{gap:12px 18px}.public-nav a{font-size:12px}.normalization-notice{padding:12px}}

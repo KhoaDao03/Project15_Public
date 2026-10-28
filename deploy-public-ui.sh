@@ -66,7 +66,7 @@ for file in p.rglob('*'):
         raise SystemExit(f'Refusing application symlink: {file}')
 for name in ('public_site.py', 'public_performance.py'):
     ast.parse((p / name).read_text(), filename=name)
-for name in ('index.html', 'performance.html', 'viewer.js', 'performance.js', 'viewer.css'):
+for name in ('index.html', 'performance.html', 'viewer.js', 'performance.js', 'viewer.css', 'results-mode.js'):
     if not (p / 'public_static' / name).is_file():
         raise SystemExit(f'Missing required static file: {name}')
 PY
@@ -107,15 +107,17 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 base = 'http://127.0.0.1:8080'
 day = datetime.now(ZoneInfo('America/New_York')).date().isoformat()
-for path in ('/', '/performance', '/api/view', '/api/performance',
-             '/api/history/BTC', '/api/intraday?day=' + day):
+for path in ('/', '/performance', '/normalized', '/normalized/performance',
+             '/api/view', '/api/performance', '/api/history/BTC', '/api/intraday?day=' + day,
+             '/api/view?normalized=true', '/api/performance?normalized=true',
+             '/api/history/BTC?normalized=true', '/api/intraday?normalized=true&day=' + day):
     with urllib.request.urlopen(base + path, timeout=30) as response:
         body = response.read()
         print(path, 'HTTP', response.status)
         if path.startswith('/api/'):
             data = json.loads(body)
             print({k: data[k] for k in ('stale', 'missing_assets') if k in data})
-for name in ('viewer.js', 'performance.js', 'viewer.css'):
+for name in ('viewer.js', 'performance.js', 'viewer.css', 'results-mode.js'):
     with urllib.request.urlopen(base + '/' + name, timeout=15) as response:
         if response.read() != (Path(sys.argv[1]) / 'public_static' / name).read_bytes():
             raise SystemExit(f'Served asset differs from deployment: {name}')
