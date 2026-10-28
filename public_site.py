@@ -264,10 +264,12 @@ def create_app(data_dir=None):
                   'Live status and open-trade counts describe the actual bot.</p></aside>')
         return HTMLResponse(html.replace("<main>", "<main>" + notice, 1))
 
+    @app.get("/")
     @app.get("/normalized")
     def normalized_index():
         return normalized_page("index.html")
 
+    @app.get("/performance")
     @app.get("/normalized/performance")
     def normalized_performance_page():
         return normalized_page("performance.html")
@@ -276,7 +278,7 @@ def create_app(data_dir=None):
     def results_mode_script():
         return FileResponse(static / "results-mode.js", media_type="text/javascript")
 
-    @app.get("/performance")
+    @app.get("/real/performance")
     def performance_page():
         return FileResponse(static / "performance.html")
 
@@ -284,7 +286,7 @@ def create_app(data_dir=None):
     def performance_script():
         return FileResponse(static / "performance.js", media_type="text/javascript")
 
-    @app.get("/")
+    @app.get("/real")
     def index():
         return FileResponse(static / "index.html")
 

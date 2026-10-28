@@ -107,7 +107,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 base = 'http://127.0.0.1:8080'
 day = datetime.now(ZoneInfo('America/New_York')).date().isoformat()
-for path in ('/', '/performance', '/normalized', '/normalized/performance',
+for path in ('/', '/performance', '/real', '/real/performance', '/normalized', '/normalized/performance',
              '/api/view', '/api/performance', '/api/history/BTC', '/api/intraday?day=' + day,
              '/api/view?normalized=true', '/api/performance?normalized=true',
              '/api/history/BTC?normalized=true', '/api/intraday?normalized=true&day=' + day):

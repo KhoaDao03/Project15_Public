@@ -168,7 +168,7 @@ class ApiModeTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_new_pages_are_labeled_without_loading_history(self):
         with patch('public_site.normalize_trade', wraps=normalize_trade) as scale:
-            for path in ('/normalized','/normalized/performance'):
+            for path in ('/','/performance','/normalized','/normalized/performance'):
                 html = self.endpoint(path)().body.decode()
                 self.assertIn('data-results-mode="normalized"',html)
                 self.assertIn('Paper Trading with 1 contract',html)

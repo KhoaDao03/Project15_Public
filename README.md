@@ -12,17 +12,19 @@ AI agents working on the Website VPS must read [AGENTS.md](AGENTS.md) first. It 
 
 ## Pages
 
-- **Market dashboard (`/`)**: all-time results, crypto, commodity and Forex records grouped separately with overall rankings, market status, selected-market details, and trade history. Open-position counts drive cyan highlights. Top market includes crypto and commodities; tied leaders are not named.
-- **Performance history (`/performance`)**: monthly and weekly P&L calendar, market filters, selected-day market records, and selectable market rows linked to daily trade records. Week/month CSV exports retain signed P&L values.
+- **Real market dashboard (`/real`)**: all-time results, crypto, commodity and Forex records grouped separately with overall rankings, market status, selected-market details, and trade history. Open-position counts drive cyan highlights. Top market includes crypto and commodities; tied leaders are not named.
+- **Real performance history (`/real/performance`)**: monthly and weekly P&L calendar, market filters, selected-day market records, and selectable market rows linked to daily trade records. Week/month CSV exports retain signed P&L values.
 - **Example calendar**: optional October 2025 sample data. Visitors can edit example daily records in browser memory; edits disappear on reload and never alter recorded trades.
 
 Both pages use the Project15 theme. Supported markets are BTC, ETH, SOL, XRP, BNB, DOGE, GOLD, SILVER, WTI (displayed as OIL / WTI), PLATINUM, PALLADIUM, COPPER, NATGAS (natural gas), EUR/USD, GBP/USD, USD/JPY, AUD/USD and USD/CAD.
 
 ## One-contract normalized views
 
-`/normalized` is the normalized market dashboard; `/normalized/performance` is
-its performance calendar, daily records, intraday chart, and CSV export. The
-original `/` and `/performance` continue to show actual recorded amounts.
+`/` is the default Paper Trading dashboard; `/performance` is its performance
+calendar, daily records, intraday chart, and CSV export. Actual recorded amounts
+are available at `/real` and `/real/performance`. The previous `/normalized` and
+`/normalized/performance` links still serve the Paper Trading pages. API defaults
+remain actual values; Paper Trading pages request `normalized=true`.
 
 Each trade contributes `net_pnl / bought` and `fees / bought`, using its original
 contracts bought, not its remaining `quantity` (which is normally zero after
