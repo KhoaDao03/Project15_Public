@@ -10,7 +10,7 @@ for (const link of document.querySelectorAll('.public-nav a')) {
   link.removeAttribute('aria-current');
   if (link.getAttribute('href') === (location.pathname === '/normalized' ? '/' : location.pathname === '/normalized/performance' ? '/performance' : location.pathname)) link.setAttribute('aria-current', 'page');
 }
-document.querySelector('.brand').href = normalizedView ? '/' : '/real';
+document.querySelector('.brand').href = '/';
 if (normalizedView) {
   const source = document.getElementById('data-source');
   if (source) {
