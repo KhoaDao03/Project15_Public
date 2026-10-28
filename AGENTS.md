@@ -8,6 +8,16 @@ Read `README.md` before making changes. Inspect the actual host and service conf
 
 ## Handoff state
 
+Normalized UI deployed on 2026-10-28 at the user's request: application revision
+`aa525784978f0c58744a7cfb36930afa66329d54`, rollback backup
+`/var/backups/project15-app.KIhGZO/app`. This supersedes the undeployed status
+below. All 12 regression tests passed before deployment. Deployment checks passed
+for all four pages and actual/normalized APIs; both HTTPS domains returned 200
+for all pages and normalized APIs, with fresh data and matching results-mode.js.
+Public service active with zero automatic restarts. Only the public application
+was restarted; DNS, Caddy configuration, Bot VPS, and synced data were unchanged.
+The application commit is local; no Git push was performed.
+
 Normalized UI implemented in the source checkout on 2026-10-28, **not deployed
 or committed in this task**. Added `/normalized` and `/normalized/performance`
 using the existing templates and APIs with `normalized=true`. Trades scale by
