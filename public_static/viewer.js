@@ -86,7 +86,9 @@ function summarize(assets,expectedCount=symbols.length){
   const completed=rated.reduce((n,a)=>n+a.completed_trades,0);
   result.win_rate=completed>0?rated.reduce((n,a)=>n+a.wins,0)/completed:null;
   result.partial=assets.length!==expectedCount||assets.some(a=>!numeric(a.realized_pnl)||!numeric(a.completed_trades));
-  result.session_pending=assets.some(a=>a.session_pending);return result;
+  result.session_pending=assets.some(a=>a.session_pending);
+  if(result.session_pending)result.session_pnl=null;
+  return result;
 }
 function leaders(assets){if(assets.length!==symbols.length||assets.some(a=>!numeric(a.realized_pnl)||!numeric(a.completed_trades))||!assets.some(a=>a.completed_trades>0))return [];const best=Math.max(...assets.map(a=>a.realized_pnl));return assets.filter(a=>a.realized_pnl===best);}
 function openTradeHighlight(data,asset){
