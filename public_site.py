@@ -251,8 +251,8 @@ def create_app(data_dir=None):
     def normalized_page(filename):
         html = (static / filename).read_text()
         html = html.replace("<body", '<body data-results-mode="normalized"', 1)
-        html = html.replace("Project15 · ", "Project15 · 1-contract · ", 1)
-        html = html.replace("<h1>", "<h1>Normalized ", 1)
+        html = html.replace("Project15 · ", "Project15 · Paper Trading · ", 1)
+        html = html.replace("<h1>", "<h1>Paper Trading · ", 1)
         notice = ('<aside class="normalization-notice" aria-label="Calculation basis">'
                   '<strong>Paper Trading with 1 contract</strong>'
                   '<p>Each recorded trade is scaled to one originally bought contract. '

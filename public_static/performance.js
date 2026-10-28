@@ -173,7 +173,7 @@ async function loadTrades(background=false){
  const response=await fetch(resultsURL('/api/history/'+tradeAsset+'?'+new URLSearchParams({day:selectedDay,basis:tradeBasis,offset,limit:25})),{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('Trade records are temporarily unavailable. Retrying automatically.');
  const data=await response.json();if(request!==tradeRequest||source!=='recorded')return;totalTrades=data.total;
  const rows=data.rows.map(trade=>{
- const row=el('tr');if(normalizedView&&trade.normalization_available===false)row.title='Original contracts bought unavailable; normalized amounts cannot be calculated.';const market=el('td',trade.market,'market'),open=trade.status==='OPEN';market.append(el('small',timestamp(trade.opened??trade.timestamp)));row.append(market);
+ const row=el('tr');if(normalizedView&&trade.normalization_available===false)row.title='Original contracts bought unavailable; Paper Trading amounts cannot be calculated.';const market=el('td',trade.market,'market'),open=trade.status==='OPEN';market.append(el('small',timestamp(trade.opened??trade.timestamp)));row.append(market);
  for(const value of [open?'OPEN':'CLOSED',trade.market_result==='yes'?'YES':trade.market_result==='no'?'NO':'Pending / unknown',(trade.side||'—').toUpperCase()+' / '+(trade.bought??trade.quantity??'—'),money(trade.entry),open?'Pending':money(trade.exit),money(trade.fees)])row.append(el('td',value));
  if(!open&&trade.exit_timestamp)row.children[5].append(el('small',(trade.exit_type==='settlement'?'Settled: ':'Sold / exit: ')+timestamp(trade.exit_timestamp)));
  row.append(el('td',open?'Pending':signed(trade.net_pnl),open?'':pnlClass(trade.net_pnl)));return row;});
@@ -191,8 +191,8 @@ async function refreshPerformance(){
  }catch(error){$('performance-message').textContent=error.message+(performanceData?' Previously loaded results may be out of date.':'');$('connection').textContent='History unavailable';$('connection').className='stale';}
  finally{performanceBusy=false;}
 }
-function csvFor(kind){const rows=[['Date','Net P&L (USD)','Completed trades','Scope','Source']];for(const day of periodDates(kind)){const stats=dayStats(day);rows.push([day,numeric(stats.pnl)?stats.pnl:'',stats.trades??'',source==='example'?'Example':assetFilter,normalizedView?'normalized-1-contract':source]);}return rows.map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\r\n');}
-function exportCSV(kind){const blob=new Blob([csvFor(kind)],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=el('a');link.href=url;link.download=`project15-${normalizedView?'normalized-1-contract':source}-${kind}-${anchor}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+function csvFor(kind){const rows=[['Date','Net P&L (USD)','Completed trades','Scope','Source']];for(const day of periodDates(kind)){const stats=dayStats(day);rows.push([day,numeric(stats.pnl)?stats.pnl:'',stats.trades??'',source==='example'?'Example':assetFilter,normalizedView?'paper-trading-1-contract':source]);}return rows.map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\r\n');}
+function exportCSV(kind){const blob=new Blob([csvFor(kind)],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=el('a');link.href=url;link.download=`project15-${normalizedView?'paper-trading-1-contract':source}-${kind}-${anchor}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 const lineColors=['#f3f4f6','#ff8a3d','#a78bfa','#34d399','#38bdf8','#6385ff','#e879f9','#a3e635','#fff176','#94a3b8','#fb7185','#cbd5e1','#c4b5fd','#e7a06f','#67e8f9','#f472b6','#2dd4bf','#fbbf24','#60a5fa'];
 let intradayData=null,intradayBusy=false,intradaySignature='',inspectedTime=null,plotGeometry=null;
 const hiddenLines=new Set();
