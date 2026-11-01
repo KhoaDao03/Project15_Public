@@ -77,8 +77,13 @@ def session_stats(rows, asset, as_of, include_early_loss=False):
     def trades_at(timestamp):
         local = datetime.fromtimestamp(timestamp, ZoneInfo(TIMEZONE))
         month = ('JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC')[local.month-1]
-        prefix = f"KX{asset}15M-{local:%y}{month}{local:%d%H%M}-"
-        return [row for ticker, trades in rows.items() if isinstance(ticker, str) and ticker.startswith(prefix)
+        base = f"KX{asset}15M-{local:%y}{month}{local:%d%H%M}"
+        # Kalshi marks the second fall-back hour with EST. Unsuffixed
+        # contracts at the same wall time belong to the first occurrence.
+        prefixes = (base + local.tzname() + "-",)
+        if not local.fold:
+            prefixes += (base + "-",)
+        return [row for ticker, trades in rows.items() if isinstance(ticker, str) and ticker.startswith(prefixes)
                 for row in trades]
     matches = trades_at(close)
     early = False
