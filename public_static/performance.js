@@ -162,7 +162,7 @@ function renderDailyMarkets(){
  replaceIfChanged($('daily-market-totals'),...totals);
 }
 function render(){preserveNavigation(()=>{
- $('calendar-date').value=selectedDay;
+ $('calendar-date-value').textContent=dateLabel(selectedDay);
  document.querySelectorAll('[data-market-group]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.marketGroup===assetFilter)));
  const all=performanceData?aggregate(performanceData.all_time):{pnl:null,trades:null};
  replaceIfChanged($('all-time-summary'),metric('Recorded realized P&L',signed(all.pnl),pnlClass(all.pnl)),metric('Completed trades',all.trades??'—'),metric('Scope',assetFilter==='all'?'All markets':$('calendar-asset').selectedOptions[0].text));
@@ -266,7 +266,46 @@ $('intraday-plot').addEventListener('keydown',event=>{if(!intradayData||!['Arrow
 window.addEventListener('resize',()=>{intradaySignature='';renderIntraday();});
 
 for(const asset of symbols){for(const id of ['asset-options','trade-asset']){const option=el('option',assetName(asset));option.value=asset;$(id).append(option);}}
-$('calendar-date').addEventListener('change',()=>{if($('calendar-date').value&&$('calendar-date').reportValidity())chooseDay($('calendar-date').value);});
+let pickerMonth='',pickerFocus='';
+function renderDatePicker(focus=false){
+ $('date-picker-month').value=pickerMonth.slice(5,7);$('date-picker-year').value=pickerMonth.slice(0,4);
+ $('date-picker-prev').disabled=pickerMonth==='2000-01-01';$('date-picker-next').disabled=pickerMonth==='2100-12-01';
+ const start=weekStart(pickerMonth),days=[];
+ for(let i=0;i<42;i++){
+   const day=shiftDay(start,i),button=el('button',String(dateObject(day).getUTCDate()),'date-picker-day');
+   button.type='button';button.dataset.date=day;button.disabled=day<'2000-01-01'||day>'2100-12-31';button.tabIndex=day===pickerFocus?0:-1;
+   button.classList.toggle('outside',day.slice(0,7)!==pickerMonth.slice(0,7));button.classList.toggle('selected',day===selectedDay);
+   button.setAttribute('aria-label',dateLabel(day));button.setAttribute('aria-pressed',String(day===selectedDay));if(day===localToday())button.setAttribute('aria-current','date');
+   button.onclick=()=>pickDate(day);
+   button.onkeydown=event=>{
+     const offset={ArrowLeft:-1,ArrowRight:1,ArrowUp:-7,ArrowDown:7,Home:-dateObject(day).getUTCDay(),End:6-dateObject(day).getUTCDay()}[event.key];
+     if(offset===undefined)return;event.preventDefault();
+     const next=shiftDay(day,offset);if(next<'2000-01-01'||next>'2100-12-31')return;
+     pickerFocus=next;pickerMonth=monthStart(next);renderDatePicker(true);
+   };
+   days.push(button);
+ }
+ $('date-picker-days').replaceChildren(...days);
+ if(focus)$('date-picker-days').querySelector('[tabindex="0"]')?.focus();
+}
+function closeDatePicker(){$('date-picker').close();$('calendar-date').setAttribute('aria-expanded','false');$('calendar-date').focus({preventScroll:true});}
+function pickDate(day){calendarStart=null;chooseDay(day);closeDatePicker();}
+function positionDatePicker(){
+ const dialog=$('date-picker');if(!dialog.open)return;
+ const rect=$('calendar-date').getBoundingClientRect(),width=dialog.offsetWidth,height=dialog.offsetHeight;
+ dialog.style.left=Math.max(12,Math.min(rect.left,innerWidth-width-12))+'px';
+ dialog.style.top=Math.max(12,Math.min(rect.bottom+8,innerHeight-height-12))+'px';
+}
+for(let month=1;month<=12;month++){const option=el('option',dateObject('2026-'+String(month).padStart(2,'0')+'-01').toLocaleDateString('en-US',{month:'long',timeZone:'UTC'}));option.value=String(month).padStart(2,'0');$('date-picker-month').append(option);}
+for(let year=2000;year<=2100;year++){const option=el('option',String(year));option.value=String(year);$('date-picker-year').append(option);}
+$('calendar-date').onclick=()=>{pickerMonth=monthStart(selectedDay);pickerFocus=selectedDay;renderDatePicker();$('date-picker').showModal();$('calendar-date').setAttribute('aria-expanded','true');positionDatePicker();$('date-picker-days').querySelector('[tabindex="0"]')?.focus({preventScroll:true});};
+for(const [id,offset] of [['date-picker-prev',-1],['date-picker-next',1]])$(id).onclick=()=>{pickerMonth=shiftMonth(pickerMonth,offset);pickerFocus=pickerMonth;renderDatePicker();};
+for(const id of ['date-picker-month','date-picker-year'])$(id).onchange=()=>{pickerMonth=$('date-picker-year').value+'-'+$('date-picker-month').value+'-01';pickerFocus=pickerMonth;renderDatePicker();};
+$('date-picker-close').onclick=closeDatePicker;$('date-picker-today').onclick=()=>pickDate(localToday());
+$('date-picker').addEventListener('cancel',event=>{event.preventDefault();closeDatePicker();});
+$('date-picker').addEventListener('click',event=>{const rect=$('date-picker').getBoundingClientRect();if(event.target===$('date-picker')&&(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom))closeDatePicker();});
+window.addEventListener('resize',positionDatePicker);
+
 $('navigation-step').addEventListener('change',render);
 for(const button of document.querySelectorAll('[data-market-group]'))button.addEventListener('click',()=>{$('calendar-asset').value=button.dataset.marketGroup;$('calendar-asset').dispatchEvent(new Event('change'));});
 $('calendar-asset').addEventListener('change',()=>{assetFilter=$('calendar-asset').value;tradeAsset=includedAssets()[0];$('trade-asset').value=tradeAsset;offset=0;render();loadTrades();});
