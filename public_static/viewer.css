@@ -127,3 +127,11 @@ table .market-button{margin-inline:auto;justify-content:center}
 .normalization-notice strong{color:var(--accent)}
 .normalization-notice p{color:var(--muted);font-size:13px;line-height:1.6;margin:6px 0 0}
 @media(max-width:480px){.public-nav{gap:12px 18px}.public-nav a{font-size:12px}.normalization-notice{padding:12px}}
+
+/* Calendar navigation and weekly totals share the existing dashboard palette. */
+.pnl-weekdays,.pnl-days{grid-template-columns:repeat(7,minmax(0,1fr)) minmax(110px,1.15fr)}
+.pnl-week-total{display:flex;flex-direction:column;justify-content:center;gap:10px;min-width:0;padding:12px;border-top:1px solid var(--line);border-left:1px solid var(--line);background:#101e17}
+.pnl-week-total strong{font-size:clamp(13px,1.8vw,22px);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}.pnl-week-total small{font-size:11px;color:var(--muted)}
+.calendar-market-groups{display:flex;gap:8px;flex-wrap:wrap;padding:14px 20px 0}.calendar-market-groups button{border-radius:20px;padding:8px 16px;min-height:40px}.calendar-market-groups button[aria-pressed=true]{background:#183c2b;border-color:#458166;color:var(--accent)}
+.pnl-filters label{display:flex;flex-direction:column;align-items:stretch;gap:6px;min-width:180px}.pnl-filters select,.pnl-filters input{min-height:42px;border-radius:8px;color-scheme:dark}.pnl-date-actions{flex-wrap:wrap}.pnl-date-actions select{min-height:40px}.pnl-day:nth-child(7n){border-right:1px solid var(--line)}
+@media(max-width:700px){.pnl-calendar-frame{overflow-x:auto}.pnl-weekdays,.pnl-days{min-width:720px}.pnl-filters{flex-wrap:wrap}.pnl-filters label{min-width:140px}.calendar-market-groups{padding:12px 12px 0;gap:6px}.calendar-market-groups button{padding:8px 12px}.pnl-date-actions{align-self:stretch;justify-content:flex-end}.pnl-week-total{padding:8px}.pnl-week-total strong{font-size:16px}}

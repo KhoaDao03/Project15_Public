@@ -15,11 +15,3 @@ for (const link of document.querySelectorAll('.public-nav a')) {
   if (link.getAttribute('href') === (location.pathname === '/normalized' ? '/' : location.pathname === '/normalized/performance' ? '/performance' : location.pathname)) link.setAttribute('aria-current', 'page');
 }
 document.querySelector('.brand').href = normalizedView ? '/' : '/real';
-if (normalizedView) {
-  const source = document.getElementById('data-source');
-  if (source) {
-    source.querySelector('[value="example"]').remove();
-    source.querySelector('[value="recorded"]').textContent = 'Paper Trading with 1 contract';
-    document.getElementById('edit-example').hidden = true;
-  }
-}

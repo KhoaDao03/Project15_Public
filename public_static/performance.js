@@ -79,17 +79,15 @@ const weekStart=d=>shiftDay(d,-dateObject(d).getUTCDay());
 const dateLabel=d=>dateObject(d).toLocaleDateString('en-US',{timeZone:'UTC',month:'long',day:'numeric',year:'numeric'});
 const localToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const timestamp=v=>numeric(v)?new Date(v*1000).toLocaleString('en-US',{timeZone:zone}):'—';
-// Reference example; separate from live data and editable only in browser memory.
-const exampleDays=Object.fromEntries(Object.entries({'01':2311,'02':2285,'05':2383,'06':2348,'07':-2557,'08':-96,'09':2132,'12':1982,'13':-2278,'14':-2548,'15':2327,'16':2403}).map(([day,pnl])=>['2025-10-'+day,{pnl,trades:1}]));
 let performanceData=null,selectedDay=localToday(),anchor=selectedDay,view='month',source='recorded',assetFilter='all',performanceBusy=false,initialized=false;
+let calendarStart=null;
 let tradeAsset='BTC',tradeBasis='closed',offset=0,totalTrades=0,tradesBusy=false,tradeRequest=0,shownTradeKey='';
 const theme=matchMedia('(prefers-color-scheme: dark)');
 function updateIcon(){$('tab-icon').href=theme.matches?'/logo.svg':'/section-logo.svg';}theme.addEventListener('change',updateIcon);updateIcon();
-function includedAssets(){return assetFilter==='all'?symbols:assetFilter==='crypto'?cryptoSymbols:assetFilter==='commodities'?commoditySymbols:[assetFilter];}
+function includedAssets(){return assetFilter==='all'?symbols:assetFilter==='crypto'?cryptoSymbols:assetFilter==='commodities'?commoditySymbols:assetFilter==='forex'?fxSymbols:[assetFilter];}
 function availableSum(values){const known=values.filter(numeric);return known.length?known.reduce((a,b)=>a+b,0):null;}
 function aggregate(assets){const values=includedAssets().map(a=>assets?.[a]);return {pnl:availableSum(values.map(a=>a?.realized_pnl)),trades:availableSum(values.map(a=>a?.completed_trades)),partial:values.some(a=>!numeric(a?.realized_pnl))};}
 function dayStats(day){
- if(source==='example')return exampleDays[day]||{pnl:0,trades:0};
  const record=performanceData?.days.find(d=>d.date===day);
  if(record)return aggregate(record.assets);
  return {pnl:null,trades:0};
@@ -98,14 +96,16 @@ function periodDates(kind=view){const start=kind==='week'?weekStart(anchor):mont
 function metric(label,value,cls=''){const n=el('div','','pnl-stat');n.append(el('small',label),el('strong',value,cls));return n;}
 function cellAmount(v){if(!numeric(v))return '—';const amount=$('signed-losses').checked?v:Math.abs(v);return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:Math.abs(amount)>=1000?0:normalizedView?4:2,notation:Math.abs(amount)>=100000?'compact':'standard'}).format(amount);}
 function renderCalendar(){
- const month=monthStart(anchor),start=view==='month'?weekStart(month):weekStart(anchor),length=view==='month'?42:7;
- $('month-title').textContent=view==='month'?dateObject(month).toLocaleDateString('en-US',{timeZone:'UTC',month:'long',year:'numeric'}):dateLabel(start)+' – '+dateLabel(shiftDay(start,6));
+ const month=monthStart(anchor),start=view==='month'?(calendarStart||weekStart(month)):weekStart(anchor),length=view==='month'?42:7;
+ $('month-title').textContent=view==='month'&&!calendarStart?dateObject(month).toLocaleDateString('en-US',{timeZone:'UTC',month:'long',year:'numeric'}):dateLabel(start)+' – '+dateLabel(shiftDay(start,length-1));
  $('week-view').setAttribute('aria-pressed',String(view==='week'));$('month-view').setAttribute('aria-pressed',String(view==='month'));
- $('period-prev').setAttribute('aria-label','Previous '+view);$('period-next').setAttribute('aria-label','Next '+view);
- const days=periodDates(),values=days.map(dayStats),available=source==='example'||days.some(d=>performanceData?.days.some(r=>r.date===d));
+ const step=view==='week'?'week':$('navigation-step').value;
+ $('navigation-step').disabled=view==='week';
+ $('period-prev').setAttribute('aria-label','Previous '+step);$('period-next').setAttribute('aria-label','Next '+step);
+ const days=calendarStart&&view==='month'?Array.from({length},(_,i)=>shiftDay(start,i)):periodDates(),values=days.map(dayStats),available=days.some(d=>performanceData?.days.some(r=>r.date===d));
  const complete=available&&values.every((v,i)=>numeric(v.pnl)||!performanceData?.days.some(r=>r.date===days[i]));
  const pnl=complete?values.reduce((s,v)=>s+(v.pnl||0),0):null,trades=values.every(v=>numeric(v.trades))?values.reduce((s,v)=>s+v.trades,0):null;
- $('period-summary').textContent=(source==='example'?'Example · ':assetFilter==='all'?'All markets · ':$('calendar-asset').selectedOptions[0].text+' · ')+signed(pnl)+' net · '+(trades??'—')+' closed trades';
+ $('period-summary').textContent=(assetFilter==='all'?'All markets · ':$('calendar-asset').selectedOptions[0].text+' · ')+signed(pnl)+' net · '+(trades??'—')+' closed trades';
  const cells=[];
  for(let i=0;i<length;i++){
   const day=shiftDay(start,i),stats=dayStats(day),active=day===selectedDay;
@@ -118,6 +118,15 @@ function renderCalendar(){
   button.addEventListener('click',()=>chooseDay(day));
   button.addEventListener('keydown',event=>{const n={ArrowLeft:-1,ArrowRight:1,ArrowUp:-7,ArrowDown:7,Home:-dateObject(day).getUTCDay(),End:6-dateObject(day).getUTCDay()}[event.key];if(n===undefined)return;event.preventDefault();chooseDay(shiftDay(day,n));$('pnl-days').querySelector('[aria-pressed=true]')?.focus({preventScroll:true});});
   cells.push(button);
+  if(i%7===6){
+    const weekDays=Array.from({length:7},(_,n)=>shiftDay(day,n-6));
+    const values=weekDays.map(dayStats),known=values.filter(v=>numeric(v.pnl));
+    const total=known.length?known.reduce((sum,v)=>sum+v.pnl,0):null;
+    const cell=el('div',undefined,'pnl-week-total '+pnlClass(total));
+    cell.setAttribute('aria-label','Week '+weekDays[0]+' to '+day+': '+signed(total));
+    cell.append(el('small','Week total'),el('strong',signed(total)),el('small',known.length?known.length+' recorded days':'No records'));
+    cells.push(cell);
+  }
  }
  if(!cells.some(n=>n.tabIndex===0))cells[0].tabIndex=0;
  replaceIfChanged($('pnl-days'),...cells);
@@ -130,7 +139,6 @@ function dailyCells(row,stats){
 }
 
 function renderDailyMarkets(){
- $('daily-market-records').hidden=source==='example';if(source==='example')return;
  const daily=dailyMarketStats(),rows=[],included=includedAssets();
  $('daily-market-date').textContent=dateLabel(selectedDay)+' · '+$('calendar-asset').selectedOptions[0].text+' · After recorded fees';
  for(const [label,assets] of [['Digital assets',cryptoSymbols],['Commodities',commoditySymbols],['Forex',fxSymbols]]){
@@ -154,16 +162,17 @@ function renderDailyMarkets(){
  replaceIfChanged($('daily-market-totals'),...totals);
 }
 function render(){preserveNavigation(()=>{
- const demo=source==='example';$('example-notice').hidden=!demo;$('example-detail').hidden=!demo;$('recorded-trades').hidden=demo;$('calendar-asset').disabled=demo;$('edit-example').disabled=!demo;
+ $('calendar-date').value=selectedDay;
+ document.querySelectorAll('[data-market-group]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.marketGroup===assetFilter)));
  const all=performanceData?aggregate(performanceData.all_time):{pnl:null,trades:null};
  replaceIfChanged($('all-time-summary'),metric('Recorded realized P&L',signed(all.pnl),pnlClass(all.pnl)),metric('Completed trades',all.trades??'—'),metric('Scope',assetFilter==='all'?'All markets':$('calendar-asset').selectedOptions[0].text));
  renderDailyMarkets();$('day-trades-title').textContent=assetName(tradeAsset)+' · Trade records';replaceIfChanged($('day-trades-icon'),coin(tradeAsset));
  renderIntraday();renderCalendar();const stats=dayStats(selectedDay);$('day-title').textContent=dateLabel(selectedDay);
- $('day-note').textContent=demo?'Example daily result':(selectedDay===performanceData?.today?'Today · In progress · ':'')+(stats.trades===0?'No recorded closed trades for this date.':'Realized results · '+$('calendar-asset').selectedOptions[0].text)+' · America/New_York';
+ $('day-note').textContent=(selectedDay===performanceData?.today?'Today · In progress · ':'')+(stats.trades===0?'No recorded closed trades for this date.':'Realized results · '+$('calendar-asset').selectedOptions[0].text)+' · America/New_York';
  replaceIfChanged($('day-summary'),metric('Net P&L',signed(stats.pnl),pnlClass(stats.pnl)),metric('Closed trades',stats.trades??'—'));
 });}
-function chooseDay(day){selectedDay=day;anchor=day;offset=0;render();loadTrades();loadIntraday();}
-function navigate(direction){anchor=view==='month'?shiftMonth(anchor,direction):shiftDay(anchor,7*direction);render();}
+function chooseDay(day){if(calendarStart&&(day<calendarStart||day>=shiftDay(calendarStart,42)))calendarStart=weekStart(day);selectedDay=day;anchor=day;offset=0;render();loadTrades();loadIntraday();}
+function navigate(direction){if(view==='week')anchor=shiftDay(anchor,7*direction);else if($('navigation-step').value==='week')calendarStart=shiftDay(calendarStart||weekStart(monthStart(anchor)),7*direction);else{anchor=shiftMonth(calendarStart||anchor,direction);calendarStart=null;}render();}
 function pagination(){$('day-trades-prev').disabled=offset===0||tradesBusy;$('day-trades-next').disabled=offset+25>=totalTrades||tradesBusy;$('day-trades-page').textContent=totalTrades?`${offset+1}–${Math.min(offset+25,totalTrades)} of ${totalTrades}`:'No records';}
 async function loadTrades(background=false){
  if(source!=='recorded'||!performanceData||(background&&tradesBusy))return;
@@ -191,7 +200,7 @@ async function refreshPerformance(){
  }catch(error){$('performance-message').textContent=error.message+(performanceData?' Previously loaded results may be out of date.':'');$('connection').textContent='History unavailable';$('connection').className='stale';}
  finally{performanceBusy=false;}
 }
-function csvFor(kind){const rows=[['Date','Net P&L (USD)','Completed trades','Scope','Source']];for(const day of periodDates(kind)){const stats=dayStats(day);rows.push([day,numeric(stats.pnl)?stats.pnl:'',stats.trades??'',source==='example'?'Example':assetFilter,normalizedView?'paper-trading-1-contract':source]);}return rows.map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\r\n');}
+function csvFor(kind){const rows=[['Date','Net P&L (USD)','Completed trades','Scope','Source']];for(const day of periodDates(kind)){const stats=dayStats(day);rows.push([day,numeric(stats.pnl)?stats.pnl:'',stats.trades??'',assetFilter,normalizedView?'paper-trading-1-contract':source]);}return rows.map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\r\n');}
 function exportCSV(kind){const blob=new Blob([csvFor(kind)],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=el('a');link.href=url;link.download=`project15-${normalizedView?'paper-trading-1-contract':source}-${kind}-${anchor}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 const lineColors=['#f3f4f6','#ff8a3d','#a78bfa','#34d399','#38bdf8','#6385ff','#e879f9','#a3e635','#fff176','#94a3b8','#fb7185','#cbd5e1','#c4b5fd','#e7a06f','#67e8f9','#f472b6','#2dd4bf','#fbbf24','#60a5fa'];
 let intradayData=null,intradayBusy=false,intradaySignature='',inspectedTime=null,plotGeometry=null;
@@ -214,10 +223,10 @@ function inspectChart(time){
  replaceIfChanged($('intraday-values'),...chartSeries().filter(s=>!hiddenLines.has(s.key)).map(s=>{const item=el('div'),swatch=svgNode('svg',{viewBox:'0 0 12 12',width:12,height:12,'aria-hidden':'true'});swatch.append(svgNode('circle',{cx:6,cy:6,r:4,fill:s.color}));item.append(swatch,el('span',s.label),el('strong',signed(atTime(s.points,inspectedTime))));return item;}));
 }
 function renderIntraday(){
- const demo=source==='example',valid=intradayData?.day===selectedDay&&!demo;
+ const valid=intradayData?.day===selectedDay;
  $('intraday-scope').textContent=dateLabel(selectedDay)+' · '+$('calendar-asset').selectedOptions[0].text+' · Cumulative realized P&L after fees';
  $('intraday-plot').toggleAttribute('hidden',!valid);$('intraday-legend').hidden=!valid;$('intraday-values').hidden=!valid;$('intraday-time').hidden=!valid;$('intraday-toggle-all').hidden=!valid;
- if(!valid){$('intraday-message').textContent=demo?'Example records contain daily totals only, so no intraday times are available.':'Loading intraday results…';intradaySignature='';plotGeometry=null;return;}
+ if(!valid){$('intraday-message').textContent='Loading intraday results…';intradaySignature='';plotGeometry=null;return;}
  const series=chartSeries(),visible=series.filter(s=>!hiddenLines.has(s.key));
  $('intraday-toggle-all').textContent=visible.length===series.length?'Deselect all':'Select all';
  const unknown=series.some(s=>s.points.some(p=>!numeric(p.pnl)));
@@ -257,15 +266,14 @@ $('intraday-plot').addEventListener('keydown',event=>{if(!intradayData||!['Arrow
 window.addEventListener('resize',()=>{intradaySignature='';renderIntraday();});
 
 for(const asset of symbols){for(const id of ['asset-options','trade-asset']){const option=el('option',assetName(asset));option.value=asset;$(id).append(option);}}
-$('data-source').addEventListener('change',()=>{source=$('data-source').value;tradeRequest++;tradesBusy=false;selectedDay=anchor=source==='example'?'2025-10-16':performanceData?.today||localToday();offset=0;view='month';render();loadTrades();loadIntraday();});
+$('calendar-date').addEventListener('change',()=>{if($('calendar-date').value&&$('calendar-date').reportValidity())chooseDay($('calendar-date').value);});
+$('navigation-step').addEventListener('change',render);
+for(const button of document.querySelectorAll('[data-market-group]'))button.addEventListener('click',()=>{$('calendar-asset').value=button.dataset.marketGroup;$('calendar-asset').dispatchEvent(new Event('change'));});
 $('calendar-asset').addEventListener('change',()=>{assetFilter=$('calendar-asset').value;tradeAsset=includedAssets()[0];$('trade-asset').value=tradeAsset;offset=0;render();loadTrades();});
-for(const kind of ['week','month']){$(kind+'-view').addEventListener('click',()=>{view=kind;anchor=selectedDay;render();});$('export-'+kind).addEventListener('click',()=>exportCSV(kind));}
-$('period-prev').addEventListener('click',()=>navigate(-1));$('period-next').addEventListener('click',()=>navigate(1));$('today').addEventListener('click',()=>chooseDay(localToday()));$('signed-losses').addEventListener('change',render);
+for(const kind of ['week','month']){$(kind+'-view').addEventListener('click',()=>{view=kind;calendarStart=null;anchor=selectedDay;render();});$('export-'+kind).addEventListener('click',()=>exportCSV(kind));}
+$('period-prev').addEventListener('click',()=>navigate(-1));$('period-next').addEventListener('click',()=>navigate(1));$('today').addEventListener('click',()=>{calendarStart=null;chooseDay(localToday());});$('signed-losses').addEventListener('change',render);
 $('month-picker-open').addEventListener('click',()=>{$('month-input').value=anchor.slice(0,7);$('month-picker').showModal();$('month-input').focus();});
-$('month-picker-cancel').addEventListener('click',()=>$('month-picker').close());$('month-picker-form').addEventListener('submit',event=>{event.preventDefault();anchor=$('month-input').value+'-01';view='month';$('month-picker').close();render();});
-$('edit-example').addEventListener('click',()=>{if(source!=='example')return;const data=dayStats(selectedDay);$('edit-date').value=selectedDay;$('edit-pnl').value=data.pnl??0;$('edit-trades').value=data.trades||1;$('example-editor').showModal();});
-$('editor-cancel').addEventListener('click',()=>$('example-editor').close());$('example-form').addEventListener('submit',event=>{event.preventDefault();if(source!=='example')return;const day=$('edit-date').value,pnl=Number($('edit-pnl').value),trades=Number($('edit-trades').value);if(!numeric(pnl)||!Number.isInteger(trades)||trades<1)return;exampleDays[day]={pnl,trades};$('example-editor').close();chooseDay(day);});
-$('delete-example').addEventListener('click',()=>{if(source!=='example')return;delete exampleDays[$('edit-date').value];$('example-editor').close();render();});
+$('month-picker-cancel').addEventListener('click',()=>$('month-picker').close());$('month-picker-form').addEventListener('submit',event=>{event.preventDefault();anchor=$('month-input').value+'-01';calendarStart=null;view='month';$('month-picker').close();render();});
 $('trade-asset').addEventListener('change',()=>selectTradeAsset($('trade-asset').value));$('trade-basis').addEventListener('change',()=>{tradeBasis=$('trade-basis').value;offset=0;loadTrades();});
 $('day-trades-prev').addEventListener('click',()=>{offset=Math.max(0,offset-25);loadTrades();});$('day-trades-next').addEventListener('click',()=>{offset+=25;loadTrades();});
 render();refreshPerformance();setInterval(refreshPerformance,1000);

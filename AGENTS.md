@@ -77,7 +77,7 @@ Recheck these facts on arrival. Do not report migration or deployment complete b
 - Do not install the trading engine, run collectors, place/cancel orders, change strategies, or operate the private dashboard here.
 - Do not copy exchange credentials, private keys, raw trading databases, private configuration, or the entire bot repository onto this VPS.
 - The public server must read local sanitized files; never proxy public requests to the private dashboard or exchange API.
-- Keep the production app read-only. The calendar's editable example data is browser-memory-only and clearly labeled. Never turn it into an API that changes real records.
+- Keep the production app read-only. The calendar displays recorded data only. Never add an API that changes real records.
 - Deploy code through GitHub; transfer live JSON separately. Do not commit runtime JSON, logs, environments, credentials, or keys.
 - Do not ask the user to paste passwords or private keys into chat. Use the host's authorized SSH/deploy credentials and verify remote host identity.
 - Do not modify Bot VPS services, DNS, or firewall rules unless the current task authorizes that scope. Do not assume access to them exists.
@@ -118,7 +118,7 @@ The supplied production service is network-isolated and accepts Caddy through `/
 - Display losses correctly: calendar absolute-value display is optional presentation; underlying numbers and exports remain signed.
 - Daily P&L uses recorded closure dates in America/New_York, including DST. Open trades do not contribute to realized P&L. Missing values are unavailable, not zero.
 - Preserve stale-data/error indicators. Never change timestamps to make old records appear fresh.
-- Recorded data is the default. Example editing remains clearly separate and never writes to real history.
+- The calendar uses recorded data only; the example calendar and editor have been removed.
 
 The server's two-second performance cache and history admission limits are deliberate. Do not remove them to chase a refresh problem. Check exporter freshness, transfer completion, destination timestamps, and browser polling before changing limits.
 

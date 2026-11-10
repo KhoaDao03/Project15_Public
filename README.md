@@ -14,7 +14,6 @@ AI agents working on the Website VPS must read [AGENTS.md](AGENTS.md) first. It 
 
 - **Real market dashboard (`/real`)**: all-time results, crypto, commodity and Forex records grouped separately with overall rankings, market status, selected-market details, and trade history. Open-position counts drive cyan highlights. Top market includes crypto and commodities; tied leaders are not named.
 - **Real performance history (`/real/performance`)**: monthly and weekly P&L calendar, market filters, selected-day market records, and selectable market rows linked to daily trade records. Week/month CSV exports retain signed P&L values.
-- **Example calendar**: optional October 2025 sample data. Visitors can edit example daily records in browser memory; edits disappear on reload and never alter recorded trades.
 
 Both pages use the Project15 theme. Supported markets are BTC, ETH, SOL, XRP, BNB, DOGE, GOLD, SILVER, WTI (displayed as OIL / WTI), PLATINUM, PALLADIUM, COPPER, NATGAS (natural gas), EUR/USD, GBP/USD, USD/JPY, AUD/USD and USD/CAD.
 
@@ -121,7 +120,7 @@ export PROJECT15_PUBLIC_DATA_DIR="$PWD/data"
 .venv/bin/python -m uvicorn public_site:create_app --factory --host 127.0.0.1 --port 8080
 ```
 
-Open `http://127.0.0.1:8080/` or `/performance`. Supply sanitized exports in `data/` to show real records. The performance page's Example calendar can be used without recorded data, though the connection warning will remain until the API has usable history.
+Open `http://127.0.0.1:8080/` or `/performance`. Supply sanitized exports in `data/` to show real records. The calendar uses recorded history only; supply sanitized exports to populate it.
 
 Keep `.venv/`, `data/`, `.env` files, SSH keys, credentials, and logs out of Git. Add appropriate ignore rules before using broad commands such as `git add .`; this repository currently does not include a `.gitignore`.
 
@@ -192,9 +191,9 @@ Separating the VPSs reduces competition with the bot for CPU and memory. It does
 
 History query parameters: `offset` (default 0), `limit` (default 25, maximum 100), optional `day=YYYY-MM-DD`, and `basis=closed` or `basis=opened`. Supported years for day filtering are 2000–2100.
 
-The chart beneath the performance calendar shows each of the 18 markets and total realized P&L after fees, starting at zero each day. Hover, tap, or use arrow keys to inspect values; legend buttons toggle lines. The market filter also filters the total. Unknown P&L stays unavailable. Example records have no intraday chart because they contain daily totals only. Intraday responses are cached for two seconds and share the trade-history request limits.
+The chart beneath the performance calendar shows each of the 18 markets and total realized P&L after fees, starting at zero each day. Hover, tap, or use arrow keys to inspect values; legend buttons toggle lines. The market filter also filters the total. Unknown P&L stays unavailable. Intraday responses are cached for two seconds and share the trade-history request limits.
 
-Requests using methods other than GET/HEAD are rejected. There are no public trading controls or write APIs. Example calendar edits and CSV downloads happen in the browser.
+Requests using methods other than GET/HEAD are rejected. There are no public trading controls or write APIs. CSV downloads happen in the browser.
 
 ## Updates and verification
 
@@ -234,3 +233,5 @@ The Market dashboard defaults to Today (America/New_York). Its All time / Today 
 Latest-session P&L also shows a current-interval realized crypto loss before that interval ends. Crypto market rows use an 8% red highlight only for an early realized loss while that contract interval is still active; the background clears when the interval ends. If other trades in the same contract remain open, the known loss is shown with Pending. Historical selected dates continue to use their final completed interval.
 
 Market detail shows Average net per contract in cents: all-time realized net P&L × 100 divided by contracts bought in completed trades. Open trades are excluded. Missing P&L or bought quantities make this average unavailable.
+
+The performance calendar supports moving its six-week view by one week or one month using **Move by**. The Week view always moves seven days. The rightmost column sums each Sunday–Saturday week across the selected markets, including days across month boundaries; weeks without recorded P&L show —. Selected date and market/group filters persist during automatic refresh. The example calendar has been removed. Real and Paper Trading views retain their separate calculation modes.
