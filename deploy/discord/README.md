@@ -19,6 +19,9 @@ The receiver's SSH account permits uploads only, so website deployment and
 receiver-side permission/HTTPS checks still need its administrator/agent.
 Follow the handoff below; successful transfer alone is not a website deployment.
 
+The viewer is intentionally absent from the main dashboard and performance
+navigation. Open `/discord` directly; the password gate still applies.
+
 ## Password gate
 
 The viewer page now asks for the operator's shared password. The data API returns
