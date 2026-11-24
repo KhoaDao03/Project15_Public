@@ -103,12 +103,15 @@ function renderMarketPnl(p){
  body.dataset.signature=signature;body.replaceChildren();
  for(const market of rows){
   const tr=node('tr');tr.append(node('td',market.ticker,'market-ticker'),node('td',market.direction||'—'));
+  tr.append(node('td',market.contracts_bought??'—'));
+  tr.append(node('td',money(market.entry_cost)));
+  tr.append(node('td',market.average_entry===null||market.average_entry===undefined?'—':(Number(market.average_entry)*100).toFixed(2)+'¢'));
   tr.append(node('td',money(market.realized_net),'market-pnl '+pnlClass(market.realized_net)));
   tr.append(node('td',market.open_contracts??'—'));
   const status=node('td');status.append(node('span',({open:'Open · realized so far',settlement_pending:'Awaiting settlement',settled:'Settled',closed:'Closed',accounting_pending:'Accounting pending'})[market.status]||'Unknown','market-status'));
   tr.append(status);body.append(tr);
  }
- if(!rows.length){const tr=node('tr'),td=node('td',p&&!p.markets?'Waiting for grouped market accounting':'No reconciled Discord markets','trade-empty');td.colSpan=5;tr.append(td);body.append(tr)}
+ if(!rows.length){const tr=node('tr'),td=node('td',p&&!p.markets?'Waiting for grouped market accounting':'No reconciled Discord markets','trade-empty');td.colSpan=8;tr.append(td);body.append(tr)}
 }
 
 function money(x){return x===undefined||x===null?'—':new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(x))}

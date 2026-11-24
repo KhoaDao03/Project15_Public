@@ -154,3 +154,28 @@ On 2026-11-24 the Bot-side display module was installed and only
 `project15-discord-public-export` was restarted. Automatic file syncing remains
 active; trading, recorder and accounting services were unchanged. Deploy the
 updated static assets on the Website VPS to show the grouped table.
+
+### Entry columns
+
+Market rows include **Contracts bought** (confirmed buy-filled quantity, including
+additions and re-entries), **Entry cost** (all confirmed buy costs plus buy fees),
+and **Avg. entry** (sum of buy costs divided by buy-filled quantity, displayed in
+cents before fees). Sells do not increase contracts bought; closing or settling a
+position does not erase its original cost. **Open contracts** remains a separate
+remaining-inventory figure. Missing entry accounting displays —, not zero.
+
+The Bot's existing read-only `capture_dashboard.py` now uses `display_entries.py`
+to summarize its `discord_fills` table across all recorded buy fills, avoiding the
+latest-100-orders limit. This helper reads through the existing read-only database
+connection and returns only per-ticker numeric totals. Neither databases nor raw
+fill records are sent to the Website VPS. The isolated exporter allowlists the
+new columns in `execution.pnl.markets`; the sync file/permissions are unchanged.
+
+For reproducing the Bot setup, copy `deploy/discord/display_entries.py` beside
+`/root/message-recorder/capture_dashboard.py` and review/apply
+`capture-entry-summary.patch` there (check against the current source first).
+Restart only the read-only dashboard and isolated display exporter. This was
+installed on 2026-11-24; trading, accounting and recorder services were unchanged.
+The previous viewer source is saved as `capture_dashboard.py.before-entry-columns`.
+The Website VPS only needs the ordinary public repository pull/deployment; it
+must not install this Bot helper or connect to any database.

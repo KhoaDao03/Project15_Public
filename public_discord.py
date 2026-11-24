@@ -25,7 +25,7 @@ def records(value, limit):
     return [v for v in value[:limit] if isinstance(v, dict)] if isinstance(value, list) else []
 
 
-def market_totals(trades):
+def market_totals(trades, entries=None):
     """Combine all accounting scopes before limiting the displayed markets.
 
     realized_net already includes allocated entry/exit fees and settlements.
@@ -60,6 +60,14 @@ def market_totals(trades):
                            else 'settled' if 'settled' in statuses else 'closed')
         for key in ('realized_net', 'open_contracts'):
             group[key] = str(group[key]) if group[key] is not None else None
+        group.update(contracts_bought=None, entry_cost=None, average_entry=None)
+        entry = (entries or {}).get(group['ticker'], {})
+        try:
+            qty, cost, fees = (Decimal(str(entry.get(k))) for k in ('contracts_bought', 'entry_cost', 'entry_fees'))
+            if all(v.is_finite() for v in (qty, cost, fees)) and qty > 0 and 0 <= cost <= qty and fees >= 0:
+                group.update(contracts_bought=str(qty), entry_cost=str(cost + fees), average_entry=str(cost / qty))
+        except (InvalidOperation, ValueError, AttributeError):
+            pass
         result.append(group)
     return result[:100]
 
@@ -91,7 +99,7 @@ def sanitize(source, channel):
     e['channels'] = [c for c in execution.get('channels', []) if c in CHANNELS]
     pnl = execution.get('pnl') or {}
     e['pnl'] = pick(pnl, 'day updated_at complete daily_realized_net all_time_realized_net')
-    e['pnl']['markets'] = market_totals(pnl.get('trades'))
+    e['pnl']['markets'] = market_totals(pnl.get('trades'), execution.get('entry_totals'))
     e['pnl']['trades'] = [pick(t, 'ticker direction realized_net open_contracts status') for t in records(pnl.get('trades'), 100)]
     e['daily_loss_guard'] = pick(execution.get('daily_loss_guard'), 'day enabled latched accounting_ready reset_at')
     e['orders'] = []

@@ -1,0 +1,27 @@
+--- a/capture_dashboard.py
++++ b/capture_dashboard.py
+@@ -4,6 +4,7 @@
+ import time
+ from trade_signal import ChannelPlan
+ from signal_runtime import SignalRuntime
++from display_entries import entry_totals
+ from btc_quotes import read_btc
+ from pathlib import Path
+ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+@@ -28,6 +29,7 @@
+             meta={k:json.loads(v) for k,v in db.execute("SELECT k,v FROM meta WHERE k IN ('pnl','discord_daily_loss_guard')")}
+             orders=[json.loads(r[0]) for r in db.execute('SELECT body FROM orders ORDER BY rowid DESC LIMIT 100')]
+             signals=[json.loads(r[0]) for r in db.execute('SELECT body FROM signals ORDER BY rowid DESC LIMIT 100')]
++            entries=entry_totals(db)
+         by_id={o['id']:o for o in orders}
+         for signal in signals:
+             order=by_id.get(signal.get('order_id'))
+@@ -36,7 +38,7 @@
+                 signal['status']=('No fill' if filled==0 else
+                                   'Filled' if filled>=float(order['count']) else 'Partially filled')
+         fresh=0<=time.time()-health.get('updated_at',0)<15
+-        return dict(health,connected=bool(fresh and health.get('running')),orders=orders,signals=signals,pnl=meta.get('pnl'),daily_loss_guard=meta.get('discord_daily_loss_guard'))
++        return dict(health,connected=bool(fresh and health.get('running')),orders=orders,signals=signals,entry_totals=entries,pnl=meta.get('pnl'),daily_loss_guard=meta.get('discord_daily_loss_guard'))
+     except (sqlite3.Error,OSError,ValueError):return dict(empty,status='unavailable')
+ 
+ 

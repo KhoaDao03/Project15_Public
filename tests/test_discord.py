@@ -2,6 +2,7 @@ import importlib.util
 import io
 import hashlib
 import os
+import sqlite3
 import json
 from pathlib import Path
 import tempfile
@@ -69,6 +70,26 @@ class DiscordTests(unittest.TestCase):
         self.assertIsNone(result['realized_net'])
         self.assertIsNone(result['open_contracts'])
         self.assertEqual(result['status'],'accounting_pending')
+
+    def test_entry_columns_use_all_buy_fills_and_weighted_price(self):
+        spec=importlib.util.spec_from_file_location('display_entries', Path(__file__).parents[1]/'deploy/discord/display_entries.py')
+        helper=importlib.util.module_from_spec(spec);spec.loader.exec_module(helper)
+        with sqlite3.connect(':memory:') as db:
+            db.execute('CREATE TABLE discord_fills(id TEXT PRIMARY KEY,body TEXT)')
+            fills=[dict(ticker='BTC-A',action='buy',qty='10',cost='2.50',fee='0.10'),
+                   dict(ticker='BTC-A',action='buy',qty='20',cost='10',fee='0.20'),
+                   dict(ticker='BTC-A',action='sell',qty='30',cost='24',fee='0.30')]
+            for i,fill in enumerate(fills): db.execute('INSERT INTO discord_fills VALUES (?,?)',(str(i),json.dumps(fill)))
+            db.execute('PRAGMA query_only=ON')
+            entries=helper.entry_totals(db)
+        row=market_totals([dict(ticker='BTC-A',direction='UP',realized_net='10.90',open_contracts='0',status='closed')],entries)[0]
+        self.assertEqual(row['contracts_bought'],'30')
+        self.assertEqual(row['entry_cost'],'12.80')
+        self.assertAlmostEqual(float(row['average_entry']),12.5/30)
+        self.assertEqual(row['realized_net'],'10.90')
+        self.assertIsNone(market_totals([dict(ticker='BTC-B')],entries)[0]['entry_cost'])
+        with sqlite3.connect(':memory:') as db:
+            self.assertEqual(helper.entry_totals(db),{})
 
     def test_password_logout_expiry_and_rate_limit(self):
         with tempfile.TemporaryDirectory() as tmp:
