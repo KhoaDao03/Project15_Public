@@ -7,7 +7,7 @@ function resultsURL(path) {
   return url.pathname + url.search;
 }
 for (const link of document.querySelectorAll('.public-nav a')) {
-  if (!normalizedView) {
+  if (!normalizedView && link.getAttribute('href') !== '/discord') {
     link.setAttribute('href', link.getAttribute('href') === '/' ? '/real' : '/real/performance');
     link.textContent = link.textContent.replace('Paper Trading', 'Real');
   }

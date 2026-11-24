@@ -16,6 +16,8 @@ from zoneinfo import ZoneInfo
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
+from public_discord import CHANNELS as DISCORD_CHANNELS, MAX_BYTES as DISCORD_MAX_BYTES, display_snapshot
+
 if __package__:
     from .public_performance import build_performance, build_intraday, normalize_trade, empty_stats
 else:  # The isolated website is installed without the trading package.
@@ -39,6 +41,44 @@ def create_app(data_dir=None):
     history_active = 0
     history_cache = OrderedDict()
     history_lock = threading.Lock()
+    discord_cache = None
+    discord_version = None
+    discord_lock = threading.Lock()
+
+    @app.get('/discord')
+    @app.get('/discord/')
+    def discord_page():
+        return FileResponse(static / 'discord' / 'index.html')
+
+    @app.get('/discord/{asset}')
+    def discord_asset(asset: str):
+        if asset not in ('app.js', 'style.css'):
+            raise HTTPException(404)
+        return FileResponse(static / 'discord' / asset,
+                            media_type='text/javascript' if asset.endswith('.js') else 'text/css')
+
+    @app.get('/api/discord/messages')
+    def discord_messages(channel: str = DISCORD_CHANNELS[0], q: str = Query('', max_length=200)):
+        nonlocal discord_cache, discord_version
+        if channel not in DISCORD_CHANNELS:
+            raise HTTPException(400, 'Unknown channel')
+        try:
+            with discord_lock, (directory / 'discord-view.json').open('rb') as source:
+                stat = os.fstat(source.fileno())
+                version = (stat.st_ino, stat.st_size, stat.st_mtime_ns)
+                if stat.st_size > DISCORD_MAX_BYTES:
+                    raise ValueError('Oversize export')
+                if version != discord_version:
+                    candidate = json.loads(source.read(DISCORD_MAX_BYTES + 1))
+                    if candidate['schema_version'] != 1:
+                        raise ValueError('Unknown schema')
+                    # Validate before replacing the cached bundle.
+                    for cid in DISCORD_CHANNELS:
+                        display_snapshot(candidate, cid)
+                    discord_cache, discord_version = candidate, version
+                return display_snapshot(discord_cache, channel, q)
+        except (OSError, ValueError, KeyError, TypeError):
+            raise HTTPException(503, 'Discord display data unavailable; retry shortly') from None
 
     @app.middleware("http")
     async def boundary(request, call_next):

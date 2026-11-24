@@ -1,0 +1,30 @@
+[Unit]
+Description=Export Discord viewer display data independently of trading
+After=network.target
+
+[Service]
+User=public-push
+Group=public-push
+WorkingDirectory=/opt/project15-discord-public-export
+ExecStart=/usr/bin/python3 -B /opt/project15-discord-public-export/exporter.py
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+UMask=0027
+CPUQuota=10%
+MemoryMax=96M
+TasksMax=16
+Nice=10
+NoNewPrivileges=true
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ReadWritePaths=/var/lib/project15-public-sync/discord
+RestrictAddressFamilies=AF_INET AF_UNIX
+IPAddressDeny=any
+IPAddressAllow=localhost
+
+[Install]
+WantedBy=multi-user.target

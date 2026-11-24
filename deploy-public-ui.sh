@@ -19,7 +19,7 @@ esac
 source_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 runtime=/srv/public-web/project15
 units=(project15-public-site.socket project15-public-site.service)
-app_paths=(public_site.py public_performance.py requirements.txt public_static)
+app_paths=(public_site.py public_performance.py public_discord.py requirements.txt public_static)
 git_source() { git -c "safe.directory=$source_dir" -C "$source_dir" "$@"; }
 for tool in git rsync python3 curl flock systemctl tar; do command -v "$tool" >/dev/null; done
 exec 9>/run/lock/project15-public-deploy.lock
@@ -64,7 +64,7 @@ p = Path(sys.argv[1])
 for file in p.rglob('*'):
     if file.is_symlink():
         raise SystemExit(f'Refusing application symlink: {file}')
-for name in ('public_site.py', 'public_performance.py'):
+for name in ('public_site.py', 'public_performance.py', 'public_discord.py'):
     ast.parse((p / name).read_text(), filename=name)
 for name in ('index.html', 'performance.html', 'viewer.js', 'performance.js', 'viewer.css', 'results-mode.js'):
     if not (p / 'public_static' / name).is_file():
@@ -86,7 +86,7 @@ printf '%s\n' "$revision" > "$backup/new-revision.txt"
 echo "Rollback backup: $backup/app"
 rollback_needed=1
 systemctl stop "${units[@]}"
-for name in public_site.py public_performance.py requirements.txt; do
+for name in public_site.py public_performance.py public_discord.py requirements.txt; do
   install -o root -g root -m 0644 "$stage/$name" "$runtime/$name"
 done
 # Delete only obsolete assets inside this application's public_static directory.
@@ -108,7 +108,7 @@ from zoneinfo import ZoneInfo
 base = 'http://127.0.0.1:8080'
 day = datetime.now(ZoneInfo('America/New_York')).date().isoformat()
 for path in ('/', '/performance', '/real', '/real/performance', '/normalized', '/normalized/performance',
-             '/api/view', '/api/performance', '/api/history/BTC', '/api/intraday?day=' + day,
+             '/discord', '/api/discord/messages', '/api/view', '/api/performance', '/api/history/BTC', '/api/intraday?day=' + day,
              '/api/view?normalized=true', '/api/performance?normalized=true',
              '/api/history/BTC?normalized=true', '/api/intraday?normalized=true&day=' + day):
     with urllib.request.urlopen(base + path, timeout=30) as response:

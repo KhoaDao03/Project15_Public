@@ -160,3 +160,14 @@ Use a read-only deploy key on the Website VPS. Creating a commit or pushing chan
 Before broad staging, add appropriate ignore rules or stage specific files. Keep `.venv/`, `data/`, `.env*`, `__pycache__/`, logs, local credentials, and key material out of commits.
 
 Future public code changes belong in this repository once it becomes the deployment source. The original Project15 copy does not synchronize automatically. Document any explicit temporary copying process and the deployed revision to prevent edits landing in the wrong copy.
+
+## Discord viewer integration
+
+`/discord` is a display-only copy of the Bot VPS port-6087 viewer. Follow
+[deploy/discord/README.md](deploy/discord/README.md) for its data contract and
+receiving-agent deployment checks. The optional approved display feed is
+`discord-view.json`; transfer it only after explicit publication authorization.
+It contains captured message text and displayed authors/trades, so sanitization
+is not anonymization. Never install the recorder, parser runtime or execution
+bridge on the Website VPS. The exporter and sender files under deploy/discord
+are for the Bot VPS only. Preserve the existing website resource/isolation limits.

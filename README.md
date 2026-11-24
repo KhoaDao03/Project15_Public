@@ -10,6 +10,14 @@ Copying these files did not change the running deployment. The separate-VPS migr
 
 AI agents working on the Website VPS must read [AGENTS.md](AGENTS.md) first. It describes the intended server boundary, migration checklist, preserved UI behavior, verification requirements, and work that is still outstanding.
 
+## Discord viewer
+
+The viewer from the Bot VPS localhost:6087 is integrated at `/discord`. It reads
+`discord-view.json`, supplied separately through the restricted data sync. It has
+no recorder, database or trading connection on the Website VPS. See
+[the integration and receiving-agent instructions](deploy/discord/README.md) for
+the export allowlist, publication authorization, service setup and deployment.
+
 ## Pages
 
 - **Real market dashboard (`/real`)**: all-time results, crypto and commodity records grouped separately with overall rankings, market status, selected-market details, and trade history. Open-position counts drive cyan highlights. Top market includes crypto and commodities; tied leaders are not named.
