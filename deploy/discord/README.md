@@ -6,6 +6,19 @@ at `/discord`, with static assets under `/discord/` and one API:
 The existing real and normalized dashboards remain separate and unchanged in their
 calculation basis. Discord shows actual recorded amounts, not normalized results.
 
+## Sender status — 2026-11-24
+
+After the operator confirmed public use of the channel display, the isolated
+exporter was enabled on the Bot VPS and the existing sync worker was updated.
+The first transfer to `147.224.164.255` completed with exit code 0. Both
+`project15-discord-public-export` and `project15-public-sync` are active with
+automatic syncing enabled. The sender export timestamp was verified advancing.
+Trading and recorder services were not restarted or changed.
+
+The receiver's SSH account permits uploads only, so website deployment and
+receiver-side permission/HTTPS checks still need its administrator/agent.
+Follow the handoff below; successful transfer alone is not a website deployment.
+
 ## Data boundary
 
 The Website VPS reads only `discord-view.json` from `PROJECT15_PUBLIC_DATA_DIR`.
