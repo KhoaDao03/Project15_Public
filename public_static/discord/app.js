@@ -28,6 +28,7 @@ async function load(){
  if(busy)return;busy=true;const selected=$('channel-select').value,search=$('search').value;
  try{
   const response=await fetch('/api/discord/messages?'+new URLSearchParams({channel:selected,q:search}));
+  if(response.status===401){location.replace('/discord');return}
   if(!response.ok)throw Error('Archive temporarily unavailable. Retrying automatically.');
   const data=await response.json();
   if(selected!==$('channel-select').value||search!==$('search').value)return;
@@ -111,3 +112,5 @@ function renderPnl(e){
  }
  if(!body.children.length){const tr=node('tr'),td=node('td','No reconciled Discord trades');td.colSpan=5;tr.append(td);body.append(tr)}
 }
+
+document.getElementById("logout").onclick=async()=>{await fetch("/api/discord/logout",{method:"POST"});location.replace("/discord")};

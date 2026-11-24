@@ -19,12 +19,32 @@ The receiver's SSH account permits uploads only, so website deployment and
 receiver-side permission/HTTPS checks still need its administrator/agent.
 Follow the handoff below; successful transfer alone is not a website deployment.
 
+## Password gate
+
+The viewer page now asks for the operator's shared password. The data API returns
+401 before any snapshot is read unless the request has a valid server-issued
+session cookie. Password verification is server-side PBKDF2; the repository stores
+only a salted digest, never the plaintext password or a browser-side comparison.
+The configured password is the one supplied by the operator in chat.
+Sessions last 12 hours, are held in bounded process memory, and end on restart or
+**Lock viewer**. Cookies are HttpOnly, SameSite=Strict, and Secure on public hostnames.
+Login attempts have a process-wide limit (burst 10, replenishing one every six
+seconds). The only allowed POST routes are login/logout; trading writes remain
+unavailable. Keep this app on its existing single-worker deployment.
+
+Deploy `discord_auth.py` with the server and the complete static directory using
+the updated deployment script. It verifies that anonymous Discord API calls receive
+401. Then manually check login, message display and logout with the supplied password.
+Existing data transfer/export services do not change. An operator can override the
+digest with `PROJECT15_DISCORD_PASSWORD_HASH=salt_hex:digest_hex`, using PBKDF2-HMAC-
+SHA256 with 260000 iterations; restart the website to apply changes and clear sessions.
+
 ## Data boundary
 
 The Website VPS reads only `discord-view.json` from `PROJECT15_PUBLIC_DATA_DIR`.
 It never connects to Discord, the bot API, the executor, or a database. The endpoint
 supports only the two configured channels and a bounded search of exported messages.
-All write methods and arbitrary file routes remain unavailable.
+Trading write methods and arbitrary file routes remain unavailable.
 
 `exporter.py` runs on the Bot VPS as `public-push`, separately from trading. It reads
 the existing loopback viewer twice per cycle with five-second timeouts and explicit
@@ -97,10 +117,10 @@ Previously transferred data persists until explicitly removed by the receiving a
 4. Run the regression suite, then `sudo bash deploy-public-ui.sh --check` followed
    by `sudo bash deploy-public-ui.sh`. The script now installs `public_discord.py`
    and the Discord assets along with the existing app; pulling alone does not deploy.
-   The Discord API must be available for the post-deployment checks to pass.
+   The deployment checks require the Discord API to reject anonymous requests with 401; verify its data after signing in.
 5. Verify `/discord`, both channel API queries, search, tabs, mobile layout, and
    refresh. Confirm the existing real/paper dashboards and performance calendars
-   still work. Check that `/api/control` and `/discord-view.json` remain 404 and POST
+   still work. Check that `/api/control` and `/discord-view.json` remain 404 and trading POST
    is 405. Confirm source timestamps advance rather than merely browser timestamps.
 6. Report the deployed revision, backup path, data freshness and service status.
    No DNS changes, exchange connections, raw DB copies or trading restarts are needed.

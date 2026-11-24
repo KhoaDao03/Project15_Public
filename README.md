@@ -12,7 +12,7 @@ AI agents working on the Website VPS must read [AGENTS.md](AGENTS.md) first. It 
 
 ## Discord viewer
 
-The viewer from the Bot VPS localhost:6087 is integrated at `/discord`. It reads
+The viewer from the Bot VPS localhost:6087 is integrated at `/discord`, behind a shared-password page and server-side API authentication. It reads
 `discord-view.json`, supplied separately through the restricted data sync. It has
 no recorder, database or trading connection on the Website VPS. See
 [the integration and receiving-agent instructions](deploy/discord/README.md) for

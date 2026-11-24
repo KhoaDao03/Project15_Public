@@ -19,7 +19,7 @@ esac
 source_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 runtime=/srv/public-web/project15
 units=(project15-public-site.socket project15-public-site.service)
-app_paths=(public_site.py public_performance.py public_discord.py requirements.txt public_static)
+app_paths=(public_site.py public_performance.py public_discord.py discord_auth.py requirements.txt public_static)
 git_source() { git -c "safe.directory=$source_dir" -C "$source_dir" "$@"; }
 for tool in git rsync python3 curl flock systemctl tar; do command -v "$tool" >/dev/null; done
 exec 9>/run/lock/project15-public-deploy.lock
@@ -64,7 +64,7 @@ p = Path(sys.argv[1])
 for file in p.rglob('*'):
     if file.is_symlink():
         raise SystemExit(f'Refusing application symlink: {file}')
-for name in ('public_site.py', 'public_performance.py', 'public_discord.py'):
+for name in ('public_site.py', 'public_performance.py', 'public_discord.py', 'discord_auth.py'):
     ast.parse((p / name).read_text(), filename=name)
 for name in ('index.html', 'performance.html', 'viewer.js', 'performance.js', 'viewer.css', 'results-mode.js'):
     if not (p / 'public_static' / name).is_file():
@@ -86,7 +86,7 @@ printf '%s\n' "$revision" > "$backup/new-revision.txt"
 echo "Rollback backup: $backup/app"
 rollback_needed=1
 systemctl stop "${units[@]}"
-for name in public_site.py public_performance.py public_discord.py requirements.txt; do
+for name in public_site.py public_performance.py public_discord.py discord_auth.py requirements.txt; do
   install -o root -g root -m 0644 "$stage/$name" "$runtime/$name"
 done
 # Delete only obsolete assets inside this application's public_static directory.
@@ -108,7 +108,7 @@ from zoneinfo import ZoneInfo
 base = 'http://127.0.0.1:8080'
 day = datetime.now(ZoneInfo('America/New_York')).date().isoformat()
 for path in ('/', '/performance', '/real', '/real/performance', '/normalized', '/normalized/performance',
-             '/discord', '/api/discord/messages', '/api/view', '/api/performance', '/api/history/BTC', '/api/intraday?day=' + day,
+             '/discord', '/api/view', '/api/performance', '/api/history/BTC', '/api/intraday?day=' + day,
              '/api/view?normalized=true', '/api/performance?normalized=true',
              '/api/history/BTC?normalized=true', '/api/intraday?normalized=true&day=' + day):
     with urllib.request.urlopen(base + path, timeout=30) as response:
@@ -117,7 +117,15 @@ for path in ('/', '/performance', '/real', '/real/performance', '/normalized', '
         if path.startswith('/api/'):
             data = json.loads(body)
             print({k: data[k] for k in ('stale', 'missing_assets') if k in data})
-for name in ('viewer.js', 'performance.js', 'viewer.css', 'results-mode.js'):
+from urllib.error import HTTPError
+try:
+    urllib.request.urlopen(base + '/api/discord/messages', timeout=15)
+except HTTPError as error:
+    if error.code != 401:
+        raise
+else:
+    raise SystemExit('Discord API is not password protected')
+for name in ('viewer.js', 'performance.js', 'viewer.css', 'results-mode.js', 'discord/login.js'):
     with urllib.request.urlopen(base + '/' + name, timeout=15) as response:
         if response.read() != (Path(sys.argv[1]) / 'public_static' / name).read_bytes():
             raise SystemExit(f'Served asset differs from deployment: {name}')

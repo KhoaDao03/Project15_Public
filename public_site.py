@@ -12,8 +12,10 @@ from pathlib import Path
 from time import monotonic
 from typing import Literal
 from zoneinfo import ZoneInfo
+from urllib.parse import urlsplit
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
+from discord_auth import DiscordAuth, COOKIE, TTL
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from public_discord import CHANNELS as DISCORD_CHANNELS, MAX_BYTES as DISCORD_MAX_BYTES, display_snapshot
@@ -44,15 +46,49 @@ def create_app(data_dir=None):
     discord_cache = None
     discord_version = None
     discord_lock = threading.Lock()
+    discord_auth = DiscordAuth()
+
+    @app.post('/api/discord/session')
+    async def discord_login(request: Request):
+        origin = request.headers.get('origin')
+        if origin and (urlsplit(origin).netloc != request.headers.get('host') or urlsplit(origin).scheme not in ('http', 'https')):
+            raise HTTPException(403)
+        body = bytearray()
+        async for chunk in request.stream():
+            body.extend(chunk)
+            if len(body) > 1024:
+                raise HTTPException(413)
+        try:
+            password = json.loads(body).get('password')
+        except (ValueError, AttributeError):
+            raise HTTPException(400) from None
+        if not isinstance(password, str) or len(password) > 128:
+            raise HTTPException(400)
+        status, token = discord_auth.login(password)
+        response = JSONResponse({'ok': status == 200}, status_code=status)
+        if token:
+            response.set_cookie(COOKIE, token, max_age=TTL, httponly=True, samesite='strict',
+                                secure=request.url.hostname not in ('localhost', '127.0.0.1', 'testserver'))
+        if status == 429:
+            response.headers['Retry-After'] = '60'
+        return response
+
+    @app.post('/api/discord/logout')
+    def discord_logout(request: Request):
+        discord_auth.logout(request.cookies.get(COOKIE))
+        response = JSONResponse({'ok': True})
+        response.delete_cookie(COOKIE)
+        return response
 
     @app.get('/discord')
     @app.get('/discord/')
-    def discord_page():
-        return FileResponse(static / 'discord' / 'index.html')
+    def discord_page(request: Request):
+        name = 'index.html' if discord_auth.valid(request.cookies.get(COOKIE)) else 'login.html'
+        return FileResponse(static / 'discord' / name)
 
     @app.get('/discord/{asset}')
     def discord_asset(asset: str):
-        if asset not in ('app.js', 'style.css'):
+        if asset not in ('app.js', 'style.css', 'login.js'):
             raise HTTPException(404)
         return FileResponse(static / 'discord' / asset,
                             media_type='text/javascript' if asset.endswith('.js') else 'text/css')
@@ -82,8 +118,12 @@ def create_app(data_dir=None):
 
     @app.middleware("http")
     async def boundary(request, call_next):
-        if request.method not in ("GET", "HEAD"):
+        path = request.url.path
+        session_post = request.method == 'POST' and path in ('/api/discord/session', '/api/discord/logout')
+        if request.method not in ("GET", "HEAD") and not session_post:
             response = JSONResponse({"detail": "Read-only website"}, status_code=405)
+        elif path.startswith('/api/discord/') and path not in ('/api/discord/session', '/api/discord/logout') and not discord_auth.valid(request.cookies.get(COOKIE)):
+            response = JSONResponse({'detail': 'Password required'}, status_code=401)
         else:
             response = await call_next(request)
         response.headers["Cache-Control"] = "no-store"

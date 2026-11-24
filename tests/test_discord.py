@@ -1,5 +1,7 @@
 import importlib.util
 import io
+import hashlib
+import os
 import json
 from pathlib import Path
 import tempfile
@@ -28,6 +30,16 @@ def bundle():
 
 
 class DiscordTests(unittest.TestCase):
+    def setUp(self):
+        salt = 'ab' * 16
+        digest = hashlib.pbkdf2_hmac('sha256', b'test-password', bytes.fromhex(salt), 260000).hex()
+        env = patch.dict(os.environ, {'PROJECT15_DISCORD_PASSWORD_HASH': salt + ':' + digest})
+        env.start()
+        self.addCleanup(env.stop)
+
+    def login(self, client):
+        self.assertEqual(client.post('/api/discord/session', json={'password':'test-password'}).status_code, 200)
+
     def test_allowlist_and_join(self):
         data = sanitize(source(CHANNELS[0]), CHANNELS[0])
         text = json.dumps(data)
@@ -36,6 +48,25 @@ class DiscordTests(unittest.TestCase):
         order = data['execution']['orders'][0]
         self.assertEqual(data['execution']['pnl']['order_pnl'][order['id']], '1.23')
         self.assertIn('<script>', data['messages'][0]['text'])  # Rendered through textContent.
+
+    def test_password_logout_expiry_and_rate_limit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            client = TestClient(create_app(tmp), base_url='https://example.com')
+            self.assertEqual(client.post('/api/discord/session', json={'password':'wrong'}).status_code,401)
+            self.assertEqual(client.get('/api/discord/messages?channel='+CHANNELS[1]).status_code,401)
+            self.assertEqual(client.post('/api/discord/session', json={'password':'test-password'},headers={'Origin':'https://evil.example'}).status_code,403)
+            self.login(client)
+            cookie = client.cookies.get('discord_session')
+            self.assertTrue(cookie)
+            self.assertNotIn('Enter password',client.get('/discord').text)
+            with patch('discord_auth.time.time', return_value=time.time()+43201):
+                self.assertEqual(client.get('/api/discord/messages').status_code,401)
+            client.post('/api/discord/logout')
+            client.cookies.set('discord_session',cookie)
+            self.assertEqual(client.get('/api/discord/messages').status_code,401)
+            codes=[client.post('/api/discord/session',json={'password':'wrong'}).status_code for _ in range(12)]
+            self.assertIn(429,codes)
+            self.assertEqual(client.get('/').status_code,200)
 
     def test_freshness_search_and_no_mutation(self):
         b = bundle()
@@ -77,6 +108,9 @@ class DiscordTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp)/'discord-view.json'
             client = TestClient(create_app(tmp))
+            self.assertEqual(client.get('/api/discord/messages').status_code, 401)
+            self.assertIn('Enter password',client.get('/discord').text)
+            self.login(client)
             self.assertEqual(client.get('/api/discord/messages').status_code, 503)
             path.write_text(json.dumps(bundle()))
             self.assertEqual(client.get('/discord').status_code, 200)

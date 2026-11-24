@@ -171,3 +171,8 @@ It contains captured message text and displayed authors/trades, so sanitization
 is not anonymization. Never install the recorder, parser runtime or execution
 bridge on the Website VPS. The exporter and sender files under deploy/discord
 are for the Bot VPS only. Preserve the existing website resource/isolation limits.
+
+The Discord viewer and API require the operator-configured shared password. Preserve
+server-side authentication in discord_auth.py, login/logout-only POST exceptions,
+Secure/HttpOnly cookies, session expiry and login throttling. Never move password
+verification into browser JavaScript or expose discord-view.json as a static file.
