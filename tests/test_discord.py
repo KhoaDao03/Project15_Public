@@ -11,7 +11,7 @@ from unittest.mock import patch
 from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
-from public_discord import CHANNELS, sanitize, display_snapshot
+from public_discord import CHANNELS, sanitize, display_snapshot, market_totals
 from public_site import create_app
 
 
@@ -48,6 +48,27 @@ class DiscordTests(unittest.TestCase):
         order = data['execution']['orders'][0]
         self.assertEqual(data['execution']['pnl']['order_pnl'][order['id']], '1.23')
         self.assertIn('<script>', data['messages'][0]['text'])  # Rendered through textContent.
+
+    def test_market_totals_use_accounting_not_buy_sell_cash_flows(self):
+        trades=[dict(ticker='BTC-A', direction='UP', realized_net='1.25', fees='0.50', open_contracts='0',status='closed'),
+                dict(ticker='BTC-A', direction='DOWN', realized_net='-0.35', fees='0.10',open_contracts='2',status='settlement_pending'),
+                dict(ticker='BTC-B', direction='UP',realized_net='-2',open_contracts='0',status='settled')]
+        result=market_totals(trades)
+        self.assertEqual([t['ticker'] for t in result],['BTC-B','BTC-A'])
+        self.assertEqual(result[1]['realized_net'],'0.90')
+        self.assertEqual(result[1]['open_contracts'],'2')
+        self.assertEqual(result[1]['direction'],'DOWN / UP')
+        self.assertEqual(result[1]['status'],'settlement_pending')
+        self.assertEqual(trades[0]['realized_net'],'1.25')
+
+    def test_market_totals_group_before_limit_and_preserve_unknown(self):
+        rows=[dict(ticker='BTC-A',direction='UP',realized_net='0.01',open_contracts='0',status='closed') for _ in range(150)]
+        self.assertEqual(market_totals(rows)[0]['realized_net'],'1.50')
+        rows.append(dict(ticker='BTC-A',direction='UP',realized_net=None,open_contracts=None,status='open'))
+        result=market_totals(rows)[0]
+        self.assertIsNone(result['realized_net'])
+        self.assertIsNone(result['open_contracts'])
+        self.assertEqual(result['status'],'accounting_pending')
 
     def test_password_logout_expiry_and_rate_limit(self):
         with tempfile.TemporaryDirectory() as tmp:

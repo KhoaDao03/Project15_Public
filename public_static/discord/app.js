@@ -88,12 +88,27 @@ function renderExecution(e,channel){
  box.querySelector('.trade-footnote').textContent=(live?'Shared Project15 gateway connected':'Gateway status unavailable or stale')+(e&&e.error?' · '+e.error:'')+' · Times shown in New York';
  const orders=(e&&e.orders||[]).filter(o=>(o.channel||channels[0])===channel);
  const pending=orders.filter(o=>!['executed','canceled','rejected'].includes(o.status));
- const filled=orders.filter(o=>Number(o.filled)>0);
- for(const [selector,rows,recent] of [['#pending-panel tbody',pending,false],['#recent-panel tbody',filled,true]]){
-  const body=document.querySelector(selector);body.replaceChildren();
-  if(!rows.length){const tr=node('tr'),td=node('td',recent?'No confirmed Discord fills':'No pending Discord orders','trade-empty');td.colSpan=recent?8:7;tr.append(td);body.append(tr);continue}
-  for(const o of rows){const tr=node('tr');const values=recent?[fmt(o.acknowledged_at||o.reconciled_at||o.created_at),(o.channel===channels[1]?'New':'Original')+' / '+o.signal_id,o.ticker,o.action+' / '+o.side,o.filled,o.avg_price? (Number(o.avg_price)*100).toFixed(2)+'¢':'—',e&&e.pnl&&e.pnl.order_fees&&e.pnl.order_fees[o.id]!==undefined?'$'+Number(e.pnl.order_fees[o.id]).toFixed(4):o.fees===undefined?'—':'$'+Number(o.fees).toFixed(4),e&&e.pnl&&e.pnl.order_pnl&&e.pnl.order_pnl[o.id]!==undefined?money(e.pnl.order_pnl[o.id]):'—']: [fmt(o.submitted_at||o.created_at),(o.channel===channels[1]?'New':'Original')+' / '+o.signal_id,o.ticker,o.action+' / '+o.side,o.limit_cents+'¢',o.filled+' / '+o.count,o.status];for(const value of values)tr.append(node('td',String(value)));body.append(tr)}
+ const body=document.querySelector('#pending-panel tbody');body.replaceChildren();
+ if(!pending.length){const tr=node('tr'),td=node('td','No pending Discord orders','trade-empty');td.colSpan=7;tr.append(td);body.append(tr)}
+ for(const o of pending){const tr=node('tr');for(const value of [fmt(o.submitted_at||o.created_at),(o.channel===channels[1]?'New':'Original')+' / '+o.signal_id,o.ticker,o.action+' / '+o.side,o.limit_cents+'¢',o.filled+' / '+o.count,o.status])tr.append(node('td',String(value)));body.append(tr)}
+ renderMarketPnl(e&&e.pnl);
+
+}
+
+function pnlClass(value){return value===null||value===undefined||!Number.isFinite(Number(value))?'pnl-unknown':Number(value)>0?'pnl-positive':Number(value)<0?'pnl-negative':'pnl-neutral'}
+function renderMarketPnl(p){
+ const body=document.querySelector('#recent-panel tbody'),rows=p&&p.markets||[];
+ const signature=JSON.stringify(rows);
+ if(body.dataset.signature===signature)return;
+ body.dataset.signature=signature;body.replaceChildren();
+ for(const market of rows){
+  const tr=node('tr');tr.append(node('td',market.ticker,'market-ticker'),node('td',market.direction||'—'));
+  tr.append(node('td',money(market.realized_net),'market-pnl '+pnlClass(market.realized_net)));
+  tr.append(node('td',market.open_contracts??'—'));
+  const status=node('td');status.append(node('span',({open:'Open · realized so far',settlement_pending:'Awaiting settlement',settled:'Settled',closed:'Closed',accounting_pending:'Accounting pending'})[market.status]||'Unknown','market-status'));
+  tr.append(status);body.append(tr);
  }
+ if(!rows.length){const tr=node('tr'),td=node('td',p&&!p.markets?'Waiting for grouped market accounting':'No reconciled Discord markets','trade-empty');td.colSpan=5;tr.append(td);body.append(tr)}
 }
 
 function money(x){return x===undefined||x===null?'—':new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(x))}
@@ -103,14 +118,11 @@ function renderPnl(e){
  const current=p&&p.day===day,fresh=current&&now-p.updated_at>=0&&now-p.updated_at<30;
  $('pnl-today').textContent=current?money(p.daily_realized_net):'—';
  $('pnl-all').textContent=p?money(p.all_time_realized_net):'—';
+ $('pnl-today').className=pnlClass(current?p.daily_realized_net:null);$('pnl-all').className=pnlClass(p?p.all_time_realized_net:null);
  const currentGuard=g&&g.day===day;
  $('pnl-guard').textContent=currentGuard&&g.enabled!==false&&g.latched?'Latched · 1 contract':!fresh||!currentGuard||!g.accounting_ready?'Accounting pending · 1 contract':g.enabled===false?'Loss latch disabled':'Armed at −$50';
  $('pnl-status').textContent='Both Discord channels combined · Fees included · Resets at midnight New York · '+(fresh&&p.complete?'Accounting reconciled':'Accounting incomplete or stale; displayed totals may be partial')+(currentGuard&&g.enabled!==false&&g.latched?' · New buys capped until '+fmt(g.reset_at):'')+'. Existing positions and exits are unchanged.'+(e&&e.interval_owner?' Interval owner: '+(e.interval_owner===channels[0]?'original channel':'new channel')+'.':' No channel owns the current interval yet.');
- const body=$('pnl-trades');body.replaceChildren();
- for(const t of (p&&p.trades||[]).slice(-100).reverse()){
-  const tr=node('tr');for(const value of [t.ticker,t.direction,money(t.realized_net),t.open_contracts,t.status.replaceAll('_',' ')])tr.append(node('td',value));body.append(tr);
- }
- if(!body.children.length){const tr=node('tr'),td=node('td','No reconciled Discord trades');td.colSpan=5;tr.append(td);body.append(tr)}
+
 }
 
 document.getElementById("logout").onclick=async()=>{await fetch("/api/discord/logout",{method:"POST"});location.replace("/discord")};

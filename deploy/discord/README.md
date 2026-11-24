@@ -132,3 +132,25 @@ If the file has not arrived, stop before deploying: coordinate sender authorizat
 and transfer first. Existing website behavior does not require the new JSON until
 this viewer is deployed. A sender rsync success proves delivery but does not verify
 receiver service permissions or public HTTPS behavior; check these on the receiver.
+
+## Market-level trade P&L
+
+The default trade tab is **Market P&L**. It shows one row per exact market ticker,
+combining both Discord channels and all accounting scopes for that contract.
+Gains are green and losses red; remaining contracts and settlement status are
+shown alongside the market's realized net total. Pending orders remain a separate,
+channel-specific tab. The duplicated per-scope P&L disclosure was removed.
+
+The Bot-side display exporter adds `execution.pnl.markets`, aggregating the full
+accounting report with decimal arithmetic **before** retaining the most recent
+100 markets. It sums authoritative `realized_net`, which already includes allocated
+fees and settlement outcomes; it never treats buy/sell cash flows as separate
+profits or subtracts fees again. Missing values remain unavailable. Open positions
+show realized results so far, not mark-to-market P&L. Overall accounting freshness
+and completeness warnings remain visible. Existing readers can ignore this new
+field; the updated viewer waits for grouped accounting if receiving an older file.
+
+On 2026-11-24 the Bot-side display module was installed and only
+`project15-discord-public-export` was restarted. Automatic file syncing remains
+active; trading, recorder and accounting services were unchanged. Deploy the
+updated static assets on the Website VPS to show the grouped table.

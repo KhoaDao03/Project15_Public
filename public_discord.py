@@ -7,6 +7,7 @@ import hashlib
 import math
 import time
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 
 CHANNELS = ('1570490132614619258', '1571977187119333396')
 MAX_BYTES = 8 * 1024 * 1024
@@ -22,6 +23,45 @@ def pick(value, keys):
 
 def records(value, limit):
     return [v for v in value[:limit] if isinstance(v, dict)] if isinstance(value, list) else []
+
+
+def market_totals(trades):
+    """Combine all accounting scopes before limiting the displayed markets.
+
+    realized_net already includes allocated entry/exit fees and settlements.
+    Never add order cash flows or subtract those fees a second time.
+    """
+    groups = {}
+    for trade in trades if isinstance(trades, list) else []:
+        if not isinstance(trade, dict) or not isinstance(trade.get('ticker'), str):
+            continue
+        ticker = trade['ticker']
+        group = groups.pop(ticker, None) or dict(ticker=ticker, directions=set(), statuses=set(),
+                                                 realized_net=Decimal(0), open_contracts=Decimal(0))
+        groups[ticker] = group  # Most recently recorded scope controls display order.
+        group['directions'].add(str(trade.get('direction') or 'Unknown'))
+        group['statuses'].add(trade.get('status'))
+        for key in ('realized_net', 'open_contracts'):
+            try:
+                value = Decimal(str(trade.get(key)))
+                if not value.is_finite():
+                    raise ValueError('Unknown amount')
+                if group[key] is not None:
+                    group[key] += value
+            except (InvalidOperation, ValueError):
+                group[key] = None
+    result = []
+    for group in reversed(list(groups.values())):
+        statuses = group.pop('statuses')
+        group['direction'] = ' / '.join(sorted(group.pop('directions')))
+        group['status'] = ('accounting_pending' if group['realized_net'] is None or group['open_contracts'] is None
+                           else 'settlement_pending' if 'settlement_pending' in statuses
+                           else 'open' if group['open_contracts'] > 0
+                           else 'settled' if 'settled' in statuses else 'closed')
+        for key in ('realized_net', 'open_contracts'):
+            group[key] = str(group[key]) if group[key] is not None else None
+        result.append(group)
+    return result[:100]
 
 
 def sanitize(source, channel):
@@ -51,6 +91,7 @@ def sanitize(source, channel):
     e['channels'] = [c for c in execution.get('channels', []) if c in CHANNELS]
     pnl = execution.get('pnl') or {}
     e['pnl'] = pick(pnl, 'day updated_at complete daily_realized_net all_time_realized_net')
+    e['pnl']['markets'] = market_totals(pnl.get('trades'))
     e['pnl']['trades'] = [pick(t, 'ticker direction realized_net open_contracts status') for t in records(pnl.get('trades'), 100)]
     e['daily_loss_guard'] = pick(execution.get('daily_loss_guard'), 'day enabled latched accounting_ready reset_at')
     e['orders'] = []
